@@ -2,6 +2,22 @@ name: Build latest Cyclo Debian packages
 
 on:
   workflow_dispatch:
+    inputs:
+      cyclo_agent_branch:
+        description: Cyclo branch to package
+        required: true
+        default: main
+        type: string
+      dcomp_branch:
+        description: DComp branch to package
+        required: true
+        default: main
+        type: string
+      provider_pooler_branch:
+        description: Provider-pooler branch to package
+        required: true
+        default: main
+        type: string
 
 permissions:
   contents: read
@@ -26,8 +42,16 @@ jobs:
             debhelper dh-python golang-go python3-all python3-build \
             python3-installer python3-setuptools python3-wheel
 
-      - name: Resolve current upstream branch tips
-        run: ./tools/refresh-latest
+      - name: Resolve requested upstream branch tips
+        env:
+          CYCLO_AGENT_BRANCH: ${{ inputs.cyclo_agent_branch }}
+          DCOMP_BRANCH: ${{ inputs.dcomp_branch }}
+          PROVIDER_POOLER_BRANCH: ${{ inputs.provider_pooler_branch }}
+        run: |
+          ./tools/refresh-latest \
+            --ref "cyclo-agent=$CYCLO_AGENT_BRANCH" \
+            --ref "dcomp=$DCOMP_BRANCH" \
+            --ref "cyclo-provider-pooler=$PROVIDER_POOLER_BRANCH"
 
       - name: Validate packaging repository
         run: make test

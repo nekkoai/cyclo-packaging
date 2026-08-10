@@ -59,12 +59,22 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn('["git", "archive", "--format=tar", commit]', build)
         self.assertIn("shutil.copytree(overlay, destination / \"debian\"", build)
         self.assertIn("dpkg-buildpackage", build)
+        refresh = (ROOT / "tools" / "refresh-latest").read_text(encoding="utf-8")
+        self.assertIn('"--ref"', refresh)
+        self.assertIn("overrides.get(name, source[\"ref\"])", refresh)
 
     def test_manual_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "build-latest-debs.yml").read_text(
             encoding="utf-8"
         )
         self.assertIn("workflow_dispatch:", workflow)
+        for name in (
+            "cyclo_agent_branch",
+            "dcomp_branch",
+            "provider_pooler_branch",
+        ):
+            self.assertIn(f"{name}:", workflow)
+        self.assertEqual(workflow.count("default: main"), 3)
         self.assertNotIn("push:", workflow)
         self.assertNotIn("pull_request:", workflow)
         self.assertIn("./tools/refresh-latest", workflow)

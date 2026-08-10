@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -96,11 +97,31 @@ def rewrite_changelog(name: str, version: str) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--ref",
+        action="append",
+        default=[],
+        metavar="SOURCE=BRANCH",
+        help="override one locked branch for this refresh; repeatable",
+    )
+    args = parser.parse_args()
+    overrides: dict[str, str] = {}
+    for value in args.ref:
+        name, separator, ref = value.partition("=")
+        if not separator or not name or not ref or name in overrides:
+            parser.error(f"invalid or duplicate --ref value: {value!r}")
+        overrides[name] = ref
+
     document = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     if document.get("schema_version") != 1 or not isinstance(document.get("sources"), dict):
         raise SystemExit(f"invalid source lock: {LOCK_PATH}")
     sources = document["sources"]
+    unknown = sorted(set(overrides) - set(sources))
+    if unknown:
+        parser.error("unknown source(s) in --ref: " + ", ".join(unknown))
     for name, source in sources.items():
+        source["ref"] = overrides.get(name, source["ref"])
         source["commit"] = branch_tip(source["repository"], source["ref"])
     LOCK_PATH.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 

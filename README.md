@@ -59,8 +59,9 @@ make test
 
 ## GitHub build artifacts
 
-The **Build latest Cyclo Debian packages** workflow is manual-only. A workflow
-dispatch resolves the current tip of every locked upstream branch, derives the
+The **Build latest Cyclo Debian packages** workflow is manual-only. Its dispatch
+form accepts a branch name for Cyclo, DComp, and provider-pooler; each input
+defaults to `main`. It resolves the requested branch tips, derives the
 corresponding Debian versions, builds the complete suite, and uploads the `.deb`,
 `.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, and generated
 packaging-version patch as one GitHub Actions artifact. It does not commit the
