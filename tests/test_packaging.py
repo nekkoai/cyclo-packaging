@@ -60,6 +60,19 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("shutil.copytree(overlay, destination / \"debian\"", build)
         self.assertIn("dpkg-buildpackage", build)
 
+    def test_manual_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "build-latest-debs.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("push:", workflow)
+        self.assertNotIn("pull_request:", workflow)
+        self.assertIn("./tools/refresh-latest", workflow)
+        self.assertIn("./tools/build-packages --output artifacts", workflow)
+        self.assertIn("actions/upload-artifact@", workflow)
+        self.assertIn("artifacts/sources.lock.json", workflow)
+        self.assertIn("SHA256SUMS", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

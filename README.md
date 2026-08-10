@@ -57,6 +57,22 @@ Run repository validation:
 make test
 ```
 
+## GitHub build artifacts
+
+The **Build latest Cyclo Debian packages** workflow is manual-only. A workflow
+dispatch resolves the current tip of every locked upstream branch, derives the
+corresponding Debian versions, builds the complete suite, and uploads the `.deb`,
+`.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, and generated
+packaging-version patch as one GitHub Actions artifact. It does not commit the
+refreshed lock or changelogs back to this repository.
+
+Use the same refresh locally before an intentional lock update:
+
+```sh
+make refresh-latest
+make build
+```
+
 ## Updating an upstream
 
 1. Review the upstream commit and update its entry in `sources.lock.json`.

@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Resolve each locked branch to its current tip and refresh package versions."""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+from datetime import datetime, timezone
+from email.utils import format_datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LOCK_PATH = ROOT / "sources.lock.json"
+CHECKOUT_ROOT = ROOT / ".sources"
+
+
+def run(*command: str, cwd: Path | None = None) -> str:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    return completed.stdout.strip()
+
+
+def branch_tip(repository: str, ref: str) -> str:
+    reference = f"refs/heads/{ref}"
+    output = run("git", "ls-remote", repository, reference)
+    lines = output.splitlines()
+    if len(lines) != 1:
+        raise SystemExit(f"expected one branch tip for {repository} {reference}")
+    commit, actual_ref = lines[0].split("\t", 1)
+    if actual_ref != reference or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise SystemExit(f"invalid branch tip for {repository} {reference}: {lines[0]!r}")
+    return commit
+
+
+def upstream_version(name: str, checkout: Path) -> str:
+    if name == "cyclo-agent":
+        try:
+            import tomllib
+        except ModuleNotFoundError:  # pragma: no cover - requires Python 3.10
+            import tomli as tomllib
+        with (checkout / "pyproject.toml").open("rb") as stream:
+            version = tomllib.load(stream)["project"]["version"]
+    elif name == "dcomp":
+        source = (checkout / "cmd" / "dcomp" / "machine.go").read_text(
+            encoding="utf-8"
+        )
+        match = re.search(r'^\s*version\s*=\s*"([^"]+)"', source, re.MULTILINE)
+        version = match.group(1) if match else None
+    elif name == "cyclo-provider-pooler":
+        version = json.loads((checkout / "package.json").read_text(encoding="utf-8"))["version"]
+    else:  # pragma: no cover - protected by the source lock
+        raise SystemExit(f"no upstream version reader for {name}")
+    if not isinstance(version, str) or not re.fullmatch(r"[0-9][A-Za-z0-9.+~-]*", version):
+        raise SystemExit(f"invalid upstream version for {name}: {version!r}")
+    return version
+
+
+def package_version(name: str, version: str, checkout: Path, commit: str) -> str:
+    if name == "cyclo-agent":
+        return f"{version}-1"
+    date = run("git", "show", "-s", "--format=%cs", commit, cwd=checkout).replace(
+        "-", ""
+    )
+    return f"{version}~git{date}.{commit[:7]}-1"
+
+
+def rewrite_changelog(name: str, version: str) -> None:
+    path = ROOT / "packages" / name / "debian" / "changelog"
+    text = path.read_text(encoding="utf-8")
+    updated, count = re.subn(
+        r"^(\S+) \([^)]+\) ([^;]+);",
+        rf"\1 ({version}) \2;",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        raise SystemExit(f"cannot update changelog header: {path}")
+    timestamp = format_datetime(datetime.now(timezone.utc), usegmt=True)
+    updated, count = re.subn(
+        r"^( -- .+?)  .+$",
+        rf"\1  {timestamp}",
+        updated,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        raise SystemExit(f"cannot update changelog timestamp: {path}")
+    path.write_text(updated, encoding="utf-8")
+
+
+def main() -> int:
+    document = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    if document.get("schema_version") != 1 or not isinstance(document.get("sources"), dict):
+        raise SystemExit(f"invalid source lock: {LOCK_PATH}")
+    sources = document["sources"]
+    for name, source in sources.items():
+        source["commit"] = branch_tip(source["repository"], source["ref"])
+    LOCK_PATH.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+    subprocess.run([str(ROOT / "tools" / "fetch-sources"), *sorted(sources)], check=True)
+    for name, source in sorted(sources.items()):
+        checkout = CHECKOUT_ROOT / name
+        version = upstream_version(name, checkout)
+        resolved = package_version(name, version, checkout, source["commit"])
+        source["package_version"] = resolved
+        rewrite_changelog(name, resolved)
+        print(f"refresh {name}: {source['commit'][:12]} -> {resolved}")
+    LOCK_PATH.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
