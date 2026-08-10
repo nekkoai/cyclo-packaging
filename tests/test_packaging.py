@@ -61,7 +61,8 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("dpkg-buildpackage", build)
         refresh = (ROOT / "tools" / "refresh-latest").read_text(encoding="utf-8")
         self.assertIn('"--ref"', refresh)
-        self.assertIn("overrides.get(name, source[\"ref\"])", refresh)
+        self.assertIn("overrides.get(name, locked_ref)", refresh)
+        self.assertIn("requested main is unavailable", refresh)
 
     def test_manual_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "build-latest-debs.yml").read_text(
