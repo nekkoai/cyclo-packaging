@@ -83,6 +83,7 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("actions/upload-artifact@", workflow)
         self.assertIn("artifacts/sources.lock.json", workflow)
         self.assertIn("SHA256SUMS", workflow)
+        self.assertIn("packaging-version-updates.patch || true", workflow)
 
 
 if __name__ == "__main__":

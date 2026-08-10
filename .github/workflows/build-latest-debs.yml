@@ -62,7 +62,8 @@ jobs:
       - name: Capture resolved source lock
         run: |
           cp sources.lock.json artifacts/sources.lock.json
-          git diff -- packages > artifacts/packaging-version-updates.patch
+          # git diff returns 1 when it finds the expected refreshed changelogs.
+          git diff -- packages > artifacts/packaging-version-updates.patch || true
           find artifacts -type f ! -name SHA256SUMS -print0 | sort -z | \
             xargs -0 sha256sum > artifacts/SHA256SUMS
 
