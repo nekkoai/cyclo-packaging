@@ -1,0 +1,20 @@
+Source: cyclo-provider-pooler
+Section: devel
+Priority: optional
+Maintainer: Cyclo Packaging Maintainers <roman@nekko.ai>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Homepage: https://github.com/glguida/cyclo-provider-pooler
+Rules-Requires-Root: no
+
+Package: cyclo-provider-pooler
+Architecture: all
+Depends: ${misc:Depends},
+         cyclo-agent (>= 0.2.1)
+Description: quota-aware account pool component for Cyclo providers
+ This package installs the immutable Docker build context for Cyclo's provider
+ pooler component. The component groups account-qualified models and chooses a
+ member that has not reported a typed pre-stream exhaustion error.
+ .
+ The package does not create a provider declaration, start a container, or
+ store credentials. Operators add an explicit pooler declaration to host.conf.

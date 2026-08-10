@@ -1,0 +1,5 @@
+dcomp (0.1.0~git20260803.c98e96b-1) noble; urgency=medium
+
+  * Package the DComp command-line lifecycle manager for the Cyclo suite.
+
+ -- Cyclo Packaging Maintainers <roman@nekko.ai>  Mon, 10 Aug 2026 00:00:00 +0000

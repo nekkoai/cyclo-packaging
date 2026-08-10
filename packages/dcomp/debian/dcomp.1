@@ -1,0 +1,30 @@
+.TH DCOMP 1 "August 2026" "DComp 0.1.0" "User Commands"
+.SH NAME
+dcomp \- apply declarative component systems to Docker
+.SH SYNOPSIS
+.B dcomp
+.RI [ --state-root\ DIR ]
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B dcomp
+manages the containers, networks, volumes, and recovery records belonging to a
+declarative component system. It is a command-line tool, not a daemon.
+.PP
+Cyclo invokes DComp with an installation-specific state root. Run it as a
+non-root user with access to the local Docker socket.
+.SH COMMANDS
+.TP
+.B version --json
+Print the stable machine-readable version and API document.
+.TP
+.B apply
+Apply a component-system declaration.
+.TP
+.B status
+Print a component-system status document.
+.TP
+.B down
+Stop and remove a component system.
+.SH SEE ALSO
+.BR dcomp-healthcheck (1)

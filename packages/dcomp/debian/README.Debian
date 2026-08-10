@@ -1,0 +1,14 @@
+DComp for Cyclo
+----------------
+
+DComp is a user-invoked Docker lifecycle command. Installing this package does
+not start a daemon, create a service account, add users to the docker group, or
+create Docker containers, networks, or volumes.
+
+Run DComp as the non-root user that is allowed to access the local Docker
+socket. Cyclo requires DComp's stable machine API:
+
+    dcomp version --json
+
+Cyclo owns its state root and calls DComp with an installation-specific DComp
+state directory. Do not create a shared system DComp state directory.

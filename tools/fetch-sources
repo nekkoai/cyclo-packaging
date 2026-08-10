@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Materialize the exact upstream commits recorded in sources.lock.json."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LOCK_PATH = ROOT / "sources.lock.json"
+CHECKOUT_ROOT = ROOT / ".sources"
+
+
+def run(*command: str, cwd: Path | None = None) -> str:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    return completed.stdout.strip()
+
+
+def lock_sources() -> dict[str, dict[str, str]]:
+    document = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    if document.get("schema_version") != 1 or not isinstance(
+        document.get("sources"), dict
+    ):
+        raise SystemExit(f"invalid source lock: {LOCK_PATH}")
+    sources = document["sources"]
+    for name, source in sources.items():
+        if not isinstance(name, str) or not isinstance(source, dict):
+            raise SystemExit(f"invalid source entry in {LOCK_PATH}")
+        if set(source) != {"repository", "ref", "commit", "package_version"}:
+            raise SystemExit(f"invalid keys for source {name!r}")
+        if not all(isinstance(value, str) and value for value in source.values()):
+            raise SystemExit(f"invalid values for source {name!r}")
+    return sources
+
+
+def materialize(name: str, source: dict[str, str]) -> None:
+    destination = CHECKOUT_ROOT / name
+    if not destination.exists():
+        print(f"fetch {name}: clone {source['repository']}")
+        run("git", "clone", "--no-checkout", source["repository"], str(destination))
+    if not (destination / ".git").is_dir():
+        raise SystemExit(f"{destination} exists but is not a Git checkout")
+    origin = run("git", "remote", "get-url", "origin", cwd=destination)
+    if origin != source["repository"]:
+        raise SystemExit(
+            f"{destination}: origin is {origin!r}, expected {source['repository']!r}"
+        )
+    print(f"fetch {name}: {source['ref']} @ {source['commit'][:12]}")
+    run("git", "fetch", "--prune", "origin", cwd=destination)
+    try:
+        run("git", "cat-file", "-e", f"{source['commit']}^{{commit}}", cwd=destination)
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(
+            f"{name}: locked commit is unavailable from {source['repository']}: "
+            f"{source['commit']}"
+        ) from exc
+    run("git", "checkout", "--detach", "--force", source["commit"], cwd=destination)
+    run("git", "clean", "-ffdqx", cwd=destination)
+    actual = run("git", "rev-parse", "HEAD", cwd=destination)
+    if actual != source["commit"]:
+        raise SystemExit(f"{name}: checked out {actual}, expected {source['commit']}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("sources", nargs="*", metavar="SOURCE")
+    args = parser.parse_args()
+    sources = lock_sources()
+    selected = args.sources or sorted(sources)
+    unknown = sorted(set(selected) - set(sources))
+    if unknown:
+        parser.error("unknown source(s): " + ", ".join(unknown))
+    CHECKOUT_ROOT.mkdir(exist_ok=True)
+    for name in selected:
+        materialize(name, sources[name])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

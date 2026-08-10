@@ -1,0 +1,19 @@
+Cyclo Provider Pooler
+---------------------
+
+This package installs a Docker build context at:
+
+    /usr/share/cyclo/components/provider-pooler
+
+It does not start a component, modify /etc/cyclo/host.conf, publish a port, or
+store provider credentials. Provider ordering and account-qualified model IDs
+are installation-specific, so the operator must add a declaration explicitly.
+
+For example, after configuring the named gateway accounts and confirming their
+model IDs with `cyclo models`:
+
+    provider pool /usr/share/cyclo/components/provider-pooler upstream=gateway.provider -- account-a/model account-b/model model=balanced
+
+Place that declaration in the relevant host.conf, then run `cyclo refresh`.
+The first image build uses the component's digest-pinned Node base image and
+installs the lockfile-pinned production dependencies inside Docker.

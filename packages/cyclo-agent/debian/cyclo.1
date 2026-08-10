@@ -1,0 +1,52 @@
+.TH CYCLO 1 "August 2026" "Cyclo 0.2.1" "User Commands"
+.SH NAME
+cyclo \- run Git-defined agent teams through composable model providers
+.SH SYNOPSIS
+.B cyclo
+.RI [ --state-root\  DIR ]
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B cyclo
+is a per-user host command for Git-defined agent teams.  It builds local
+component images and delegates container lifecycle to DComp.  Cyclo requires a
+local Docker Engine and a DComp executable with machine API version 1.
+.PP
+Cyclo does not run as a daemon.  It stores per-user state in
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/cyclo
+unless an explicit state root is selected.  The default state root reads the
+optional system configuration file
+.IR /etc/cyclo/host.conf .
+.PP
+Do not run Cyclo as root.  The invoking user must have access to the local
+Docker socket.
+.SH COMMANDS
+.TP
+.B team init
+Create a team repository from a bundled template.
+.TP
+.B project init
+Create a project definition with team and project mounts.
+.TP
+.B validate
+Validate a team or project definition without starting a workload.
+.TP
+.B gateway
+Inspect providers, log in, build the gateway, or destroy its credential store.
+.TP
+.B run, start, stop, ps, inspect, logs
+Manage persisted project instances.
+.TP
+.B doctor
+Check the host Docker and DComp prerequisites.
+.SH FILES
+.TP
+.I /etc/cyclo/host.conf
+Optional provider-component configuration for the default state root.  This
+file must not contain provider credentials.
+.SH SEE ALSO
+The installed README at
+.I /usr/share/doc/cyclo-agent/README.md.gz
+and the project documentation describe team, project, and provider formats.
+.SH AUTHOR
+Cyclo was written by Gianluca Guida.

@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Build locked Cyclo-suite Debian packages from external packaging overlays."""
+
+from __future__ import annotations
+
+import argparse
+import io
+import json
+import os
+import shutil
+import subprocess
+import tarfile
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LOCK_PATH = ROOT / "sources.lock.json"
+CHECKOUT_ROOT = ROOT / ".sources"
+OVERLAY_ROOT = ROOT / "packages"
+
+
+def run(*command: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> str:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    return completed.stdout.strip()
+
+
+def sources() -> dict[str, dict[str, str]]:
+    document = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    if document.get("schema_version") != 1 or not isinstance(
+        document.get("sources"), dict
+    ):
+        raise SystemExit(f"invalid source lock: {LOCK_PATH}")
+    return document["sources"]
+
+
+def require_clean_checkout(name: str, commit: str) -> Path:
+    checkout = CHECKOUT_ROOT / name
+    if not (checkout / ".git").is_dir():
+        raise SystemExit(f"source is not fetched: {checkout}; run tools/fetch-sources")
+    actual = run("git", "rev-parse", "HEAD", cwd=checkout)
+    if actual != commit:
+        raise SystemExit(f"{name}: checkout is {actual}, expected locked {commit}")
+    if run("git", "status", "--porcelain", cwd=checkout):
+        raise SystemExit(f"{name}: source checkout is dirty; run tools/fetch-sources {name}")
+    return checkout
+
+
+def source_epoch(checkout: Path, commit: str) -> str:
+    return run("git", "show", "-s", "--format=%ct", commit, cwd=checkout)
+
+
+def stage_source(checkout: Path, commit: str, overlay: Path, destination: Path) -> None:
+    archive = subprocess.run(
+        ["git", "archive", "--format=tar", commit],
+        cwd=checkout,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    destination.mkdir(parents=True)
+    with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
+        bundle.extractall(destination, filter="data")
+    if not overlay.is_dir():
+        raise SystemExit(f"missing packaging overlay: {overlay}")
+    shutil.copytree(overlay, destination / "debian", symlinks=True)
+
+
+def build_one(
+    name: str,
+    source: dict[str, str],
+    output_root: Path,
+    overwrite: bool,
+) -> None:
+    checkout = require_clean_checkout(name, source["commit"])
+    overlay = OVERLAY_ROOT / name / "debian"
+    output = output_root / name
+    if output.exists():
+        if not overwrite:
+            raise SystemExit(f"output already exists: {output}")
+        shutil.rmtree(output)
+    with tempfile.TemporaryDirectory(prefix=f"cyclo-package-{name}-") as temporary:
+        temporary_root = Path(temporary)
+        stage = temporary_root / "source"
+        stage_source(checkout, source["commit"], overlay, stage)
+        version = run("dpkg-parsechangelog", "-S", "Version", cwd=stage)
+        if version != source["package_version"]:
+            raise SystemExit(
+                f"{name}: changelog version {version!r} does not match lock "
+                f"{source['package_version']!r}"
+            )
+        print(f"build {name}: {version}")
+        run("dpkg-checkbuilddeps", "debian/control", cwd=stage)
+        environment = os.environ | {"SOURCE_DATE_EPOCH": source_epoch(checkout, source["commit"])}
+        subprocess.run(
+            ["dpkg-buildpackage", "--build=binary", "--unsigned-source", "--unsigned-changes"],
+            cwd=stage,
+            env=environment,
+            check=True,
+        )
+        artifacts = sorted(path for path in temporary_root.iterdir() if path.is_file())
+        if not any(path.suffix == ".deb" for path in artifacts):
+            raise SystemExit(f"{name}: build produced no Debian package")
+        output.mkdir(parents=True)
+        for artifact in artifacts:
+            shutil.copy2(artifact, output / artifact.name)
+        print(f"artifacts: {output}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("packages", nargs="*", metavar="PACKAGE")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts")
+    parser.add_argument("--overwrite", action="store_true")
+    args = parser.parse_args()
+    locked = sources()
+    selected = args.packages or sorted(locked)
+    unknown = sorted(set(selected) - set(locked))
+    if unknown:
+        parser.error("unknown package(s): " + ", ".join(unknown))
+    subprocess.run([str(ROOT / "tools" / "fetch-sources"), *selected], check=True)
+    for name in selected:
+        build_one(name, locked[name], args.output.resolve(), args.overwrite)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

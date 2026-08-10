@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import json
+import re
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+LOCK = json.loads((ROOT / "sources.lock.json").read_text(encoding="utf-8"))
+PACKAGES = tuple(sorted(LOCK["sources"]))
+
+
+class PackagingLayoutTests(unittest.TestCase):
+    def test_lock_has_immutable_source_contracts(self) -> None:
+        self.assertEqual(LOCK["schema_version"], 1)
+        self.assertEqual(
+            PACKAGES,
+            ("cyclo-agent", "cyclo-provider-pooler", "dcomp"),
+        )
+        for name, source in LOCK["sources"].items():
+            with self.subTest(name=name):
+                self.assertEqual(
+                    set(source),
+                    {"repository", "ref", "commit", "package_version"},
+                )
+                self.assertRegex(source["repository"], r"^https://github\.com/.+\.git$")
+                self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
+                self.assertRegex(source["package_version"], r"^[0-9][A-Za-z0-9.+~:-]*-[0-9]+$")
+
+    def test_every_locked_source_has_a_complete_debian_overlay(self) -> None:
+        for name in PACKAGES:
+            with self.subTest(name=name):
+                debian = ROOT / "packages" / name / "debian"
+                for required in ("control", "changelog", "copyright", "rules"):
+                    self.assertTrue((debian / required).is_file(), required)
+                changelog = (debian / "changelog").read_text(encoding="utf-8")
+                self.assertIn(f"({LOCK['sources'][name]['package_version']}) noble;", changelog)
+                self.assertIn("Rules-Requires-Root: no", (debian / "control").read_text())
+
+    def test_component_boundaries_do_not_create_host_services_or_credentials(self) -> None:
+        combined = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (ROOT / "packages").glob("*/debian/*")
+            if path.is_file()
+        )
+        self.assertNotIn("systemd", combined.lower())
+        self.assertNotIn("adduser", combined.lower())
+        self.assertNotIn("useradd", combined.lower())
+        for forbidden in ("postinst", "prerm", "postrm", "preinst"):
+            self.assertFalse(any((ROOT / "packages").glob(f"*/debian/*.{forbidden}")))
+        self.assertIn("never edits `host.conf`", (ROOT / "README.md").read_text())
+
+    def test_build_tools_stage_overlays_instead_of_mutating_upstreams(self) -> None:
+        fetch = (ROOT / "tools" / "fetch-sources").read_text(encoding="utf-8")
+        build = (ROOT / "tools" / "build-packages").read_text(encoding="utf-8")
+        self.assertIn("git", fetch)
+        self.assertIn("checkout", fetch)
+        self.assertIn('["git", "archive", "--format=tar", commit]', build)
+        self.assertIn("shutil.copytree(overlay, destination / \"debian\"", build)
+        self.assertIn("dpkg-buildpackage", build)
+
+
+if __name__ == "__main__":
+    unittest.main()

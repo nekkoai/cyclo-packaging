@@ -1,0 +1,30 @@
+Cyclo for Ubuntu and Debian
+---------------------------
+
+Cyclo is a per-user host CLI. Installing this package does not start a daemon,
+create a service account, add users to the docker group, or create Docker
+containers, networks, or volumes.
+
+Runtime prerequisites
+---------------------
+
+The package depends on Git, Docker Engine, and the separately packaged DComp
+command. The invoking user must be able to access Docker and must not run Cyclo
+as root. Confirm that DComp exposes machine API 1 before the first stateful
+Cyclo command:
+
+    dcomp version --json
+    cyclo doctor
+
+Configuration and credentials
+-----------------------------
+
+With the default state root, Cyclo reads /etc/cyclo/host.conf. The packaged file
+is a conffile and is intentionally comment-only; leaving it empty routes teams
+directly to Cyclo's credential gateway. Put only provider-component declarations
+there. Do not put API keys or OAuth tokens in that file.
+
+Cyclo keeps state below ${XDG_STATE_HOME:-$HOME/.local/state}/cyclo. It stores
+provider credentials in a private Docker volume, never in /etc or /var/lib.
+Use --state-root (or CYCLO_STATE_ROOT) when an installation needs independent
+state and a local host.conf.

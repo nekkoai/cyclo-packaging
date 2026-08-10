@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+[ "$(cyclo --version)" = "cyclo 0.2.1" ]
+test -f /etc/cyclo/host.conf
+test -f /usr/share/doc/cyclo-agent/README.Debian.gz
+
+work_root=$(mktemp -d)
+cleanup() {
+    rm -rf -- "$work_root"
+}
+trap cleanup EXIT HUP INT TERM
+
+python3 - "$work_root" <<'PY'
+import os
+import stat
+import subprocess
+import sys
+from importlib.metadata import distribution
+from pathlib import Path
+
+root = Path(sys.argv[1])
+dist = distribution("cyclo-agent")
+assert dist.version == "0.2.1"
+
+import cyclo
+from cyclo.resources import components_root
+from cyclo.team.resources import packaged_agentws_runtime
+
+assert cyclo.__version__ == dist.version
+assert components_root().is_dir()
+runtime = packaged_agentws_runtime()
+for path in [
+    *sorted((runtime / "bin").iterdir()),
+    runtime / "tools" / "agent",
+    runtime / "tools" / "agent-pi-interactive",
+    runtime / "tools" / "agentws",
+    runtime / "tools" / "run_agentws",
+]:
+    assert path.is_file(), path
+    assert path.stat().st_mode & stat.S_IXUSR, path
+
+env = {
+    "HOME": str(root / "home"),
+    "XDG_STATE_HOME": str(root / "state"),
+    "PATH": os.environ["PATH"],
+}
+team = root / "team"
+subprocess.run(
+    [
+        "cyclo",
+        "team",
+        "init",
+        str(team),
+        "--model",
+        "example/model",
+    ],
+    check=True,
+    env=env,
+)
+subprocess.run(["cyclo", "validate", str(team)], check=True, env=env)
+PY

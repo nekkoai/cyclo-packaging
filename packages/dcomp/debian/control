@@ -1,0 +1,21 @@
+Source: dcomp
+Section: admin
+Priority: optional
+Maintainer: Cyclo Packaging Maintainers <roman@nekko.ai>
+Build-Depends: debhelper-compat (= 13),
+               golang-go
+Standards-Version: 4.7.0
+Homepage: https://github.com/glguida/dcomp
+Rules-Requires-Root: no
+
+Package: dcomp
+Architecture: any
+Depends: ${misc:Depends},
+         docker.io (>= 25.0)
+Description: Docker component lifecycle manager for Cyclo
+ DComp applies declarative component systems to a local Docker Engine. It owns
+ container, network, volume, and interrupted-operation lifecycle while Cyclo
+ owns project and team intent.
+ .
+ This package installs the dcomp and dcomp-healthcheck commands only. It does
+ not start a service, create a system user, or create Docker resources.

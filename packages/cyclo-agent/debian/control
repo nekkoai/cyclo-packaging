@@ -1,0 +1,30 @@
+Source: cyclo-agent
+Section: devel
+Priority: optional
+Maintainer: Gianluca Guida <glguida@tlbflush.org>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-build,
+               python3-installer,
+               python3-setuptools,
+               python3-wheel
+Standards-Version: 4.7.0
+Homepage: https://github.com/nekkoai/cyclo
+Rules-Requires-Root: no
+
+Package: cyclo-agent
+Architecture: all
+Depends: ${misc:Depends},
+         ${python3:Depends},
+         dcomp,
+         docker.io,
+         git
+Description: Git-defined agent teams through an isolated credential proxy
+ Cyclo runs Git-defined agent teams against explicitly mounted projects. It
+ builds the team and credential-gateway images locally, while DComp owns their
+ Docker lifecycle and durable component topology.
+ .
+ This package installs only the host command and its immutable resources. It
+ neither starts containers nor creates system users during installation. Cyclo
+ state and credentials remain per-user; Docker access is required at runtime.

@@ -1,0 +1,5 @@
+cyclo-agent (0.2.1-1) noble; urgency=medium
+
+  * Add an Ubuntu/Debian package for the Cyclo host CLI.
+
+ -- Gianluca Guida <glguida@tlbflush.org>  Mon, 10 Aug 2026 00:00:00 +0000

@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+root=/usr/share/cyclo/components/provider-pooler
+test -f "$root/Dockerfile"
+test -f "$root/.dockerignore"
+test -f "$root/component.dcomp"
+test -f "$root/package-lock.json"
+test -f "$root/gen/cyclo/provider/v1/provider_pb.js"
+test -f /usr/share/doc/cyclo-provider-pooler/README.Debian.gz
+
+config=$(mktemp)
+cleanup() {
+    rm -f -- "$config"
+}
+trap cleanup EXIT HUP INT TERM
+printf '%s\n' \
+    "provider pool $root upstream=gateway.provider -- account-a/model account-b/model model=balanced" \
+    > "$config"
+
+python3 - "$config" <<'PY'
+import sys
+from cyclo.host import load_host
+
+host = load_host(__import__("pathlib").Path(sys.argv[1]))
+assert host.outer_component == "pool"
+provider = host.providers[0]
+assert provider.provider_output == "provider"
+assert provider.arguments == ("account-a/model", "account-b/model", "model=balanced")
+PY

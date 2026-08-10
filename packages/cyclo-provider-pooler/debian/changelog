@@ -1,0 +1,5 @@
+cyclo-provider-pooler (0.1.0~git20260810.63b0690-1) noble; urgency=medium
+
+  * Package the Cyclo provider-pooler component build context.
+
+ -- Cyclo Packaging Maintainers <roman@nekko.ai>  Mon, 10 Aug 2026 00:00:00 +0000

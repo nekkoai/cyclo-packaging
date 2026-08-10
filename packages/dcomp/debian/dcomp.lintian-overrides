@@ -1,0 +1,4 @@
+# DComp is intentionally built with CGO disabled so deployment does not depend
+# on host C libraries. Docker remains an explicit runtime dependency.
+dcomp: statically-linked-binary [usr/bin/dcomp]
+dcomp: statically-linked-binary [usr/bin/dcomp-healthcheck]

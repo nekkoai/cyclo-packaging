@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+[ "$(dcomp version --json)" = '{"version":"0.1.0","api_version":1}' ]
+test -x /usr/bin/dcomp
+test -x /usr/bin/dcomp-healthcheck
+test -f /usr/share/man/man1/dcomp.1.gz
+test -f /usr/share/man/man1/dcomp-healthcheck.1.gz

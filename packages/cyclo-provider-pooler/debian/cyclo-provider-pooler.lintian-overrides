@@ -1,0 +1,4 @@
+# These Node entrypoints execute only inside the component image, whose
+# Dockerfile invokes them explicitly with Node.js.
+cyclo-provider-pooler: script-not-executable [usr/share/cyclo/components/provider-pooler/src/healthcheck.mjs]
+cyclo-provider-pooler: script-not-executable [usr/share/cyclo/components/provider-pooler/src/main.mjs]

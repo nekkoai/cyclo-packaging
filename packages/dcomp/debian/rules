@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+
+GO ?= go
+export CGO_ENABLED = 0
+export GOFLAGS = -mod=vendor
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	@version="$$($(GO) env GOVERSION)"; version="$${version#go}"; \
+		dpkg --compare-versions "$$version" ge 1.25 \
+		|| { echo "dcomp requires Go 1.25 or newer, found $$version" >&2; exit 1; }
+	$(GO) mod vendor
+
+override_dh_auto_build:
+	$(MAKE) GO=$(GO) build
+
+override_dh_auto_test:
+	$(GO) test ./...
+
+override_dh_auto_install:
+	$(MAKE) GO=$(GO) install DESTDIR=$(CURDIR)/debian/dcomp PREFIX=/usr INSTALL=install
+	rm -f debian/dcomp/usr/share/doc/dcomp/LICENSE
+
+override_dh_dwz:
+	:

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "cyclo-agent": {
+      "repository": "https://github.com/nekkoai/cyclo.git",
+      "ref": "0.2.1",
+      "commit": "bd55a787356e853c9f1cdec328ce39ca84930743",
+      "package_version": "0.2.1-1"
+    },
+    "dcomp": {
+      "repository": "https://github.com/glguida/dcomp.git",
+      "ref": "master",
+      "commit": "c98e96b829a77868e763f09d13419008697c0579",
+      "package_version": "0.1.0~git20260803.c98e96b-1"
+    },
+    "cyclo-provider-pooler": {
+      "repository": "https://github.com/glguida/cyclo-provider-pooler.git",
+      "ref": "main",
+      "commit": "63b0690e817575ed5b9d07265c20217eb0fce5df",
+      "package_version": "0.1.0~git20260810.63b0690-1"
+    }
+  }
+}
