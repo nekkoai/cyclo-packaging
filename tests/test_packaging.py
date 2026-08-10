@@ -80,6 +80,7 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertNotIn("pull_request:", workflow)
         self.assertIn("./tools/refresh-latest", workflow)
         self.assertIn("./tools/build-packages --output artifacts", workflow)
+        self.assertIn("build-essential", workflow)
         self.assertIn("actions/upload-artifact@", workflow)
         self.assertIn("artifacts/sources.lock.json", workflow)
         self.assertIn("SHA256SUMS", workflow)
