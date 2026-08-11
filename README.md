@@ -65,9 +65,10 @@ defaults to `main`. If an upstream has not renamed its locked default branch,
 a requested `main` falls back explicitly to that locked branch (currently
 DComp's `master`). It resolves the resulting branch tips, derives the
 corresponding Debian versions, builds the complete suite, and uploads the `.deb`,
-`.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, and generated
-packaging-version patch as one GitHub Actions artifact. It does not commit the
-refreshed lock or changelogs back to this repository.
+`.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, generated
+packaging-version patch, checksums, and an unsigned `apt-repository/` as one
+GitHub Actions artifact. It does not commit the refreshed lock or changelogs
+back to this repository.
 
 Use the same refresh locally before an intentional lock update:
 

@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential debhelper dh-python golang-go python3-all python3-build \
+            apt-utils build-essential debhelper dh-python golang-go python3-all python3-build \
             python3-installer python3-setuptools python3-wheel
 
       - name: Resolve requested upstream branch tips
@@ -64,6 +64,12 @@ jobs:
           cp sources.lock.json artifacts/sources.lock.json
           # git diff returns 1 when it finds the expected refreshed changelogs.
           git diff -- packages > artifacts/packaging-version-updates.patch || true
+
+      - name: Assemble local APT repository
+        run: ./tools/build-apt-repository artifacts
+
+      - name: Checksum published artifacts
+        run: |
           find artifacts -type f ! -name SHA256SUMS -print0 | sort -z | \
             xargs -0 sha256sum > artifacts/SHA256SUMS
 

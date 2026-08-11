@@ -80,11 +80,22 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertNotIn("pull_request:", workflow)
         self.assertIn("./tools/refresh-latest", workflow)
         self.assertIn("./tools/build-packages --output artifacts", workflow)
+        self.assertIn("apt-utils", workflow)
         self.assertIn("build-essential", workflow)
+        self.assertIn("./tools/build-apt-repository artifacts", workflow)
         self.assertIn("actions/upload-artifact@", workflow)
         self.assertIn("artifacts/sources.lock.json", workflow)
         self.assertIn("SHA256SUMS", workflow)
         self.assertIn("packaging-version-updates.patch || true", workflow)
+
+    def test_apt_repository_builder_emits_a_consumable_unsigned_repository(self) -> None:
+        builder = (ROOT / "tools" / "build-apt-repository").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("apt-ftparchive packages pool/main", builder)
+        self.assertIn("dists/stable/main/binary-amd64/Packages", builder)
+        self.assertIn("APT::FTPArchive::Release::Suite", builder)
+        self.assertIn("[trusted=yes] file:$repo stable main", builder)
 
 
 if __name__ == "__main__":

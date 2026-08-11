@@ -1,0 +1,89 @@
+#!/bin/sh
+# Assemble an unsigned local APT repository from built Cyclo-suite packages.
+set -eu
+
+fail() {
+    printf '%s\n' "build apt repository: $*" >&2
+    exit 1
+}
+
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] \
+    || fail "usage: tools/build-apt-repository ARTIFACT_DIRECTORY [REPOSITORY_DIRECTORY]"
+
+artifacts=$1
+[ -d "$artifacts" ] || fail "not a directory: $artifacts"
+artifacts=$(CDPATH= cd -- "$artifacts" && pwd)
+repository=${2:-"$artifacts/apt-repository"}
+case $repository in
+    /*) ;;
+    *) repository=$PWD/$repository ;;
+esac
+[ ! -e "$repository" ] && [ ! -L "$repository" ] \
+    || fail "repository already exists: $repository"
+
+command -v apt-ftparchive >/dev/null 2>&1 \
+    || fail "apt-ftparchive is required (install apt-utils)"
+command -v gzip >/dev/null 2>&1 || fail "gzip is required"
+
+repository_parent=$(dirname -- "$repository")
+mkdir -p "$repository_parent"
+stage=$(mktemp -d "$repository_parent/.apt-repository.XXXXXX")
+cleanup() {
+    status=$?
+    trap - 0
+    rm -rf -- "$stage"
+    exit "$status"
+}
+trap cleanup 0
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+mkdir -p "$stage/pool/main" "$stage/dists/stable/main/binary-amd64"
+find "$artifacts" -path "$stage" -prune -o \
+    -type f \( -name '*.deb' -o -name '*.ddeb' \) \
+    -exec cp -a -- {} "$stage/pool/main/" \;
+set -- "$stage/pool/main"/*
+[ -f "$1" ] || fail "no .deb or .ddeb package found under $artifacts"
+
+(
+    cd "$stage"
+    apt-ftparchive packages pool/main > dists/stable/main/binary-amd64/Packages
+    gzip -9n -k dists/stable/main/binary-amd64/Packages
+    apt-ftparchive \
+        -o APT::FTPArchive::Release::Origin="Nekko AI" \
+        -o APT::FTPArchive::Release::Label="Cyclo" \
+        -o APT::FTPArchive::Release::Suite="stable" \
+        -o APT::FTPArchive::Release::Codename="stable" \
+        -o APT::FTPArchive::Release::Architectures="amd64" \
+        -o APT::FTPArchive::Release::Components="main" \
+        release dists/stable > dists/stable/Release
+)
+
+cat > "$stage/README.md" <<'EOF'
+# Cyclo local APT repository
+
+This repository is intentionally unsigned. It is packaged as a GitHub Actions
+artifact for local testing and deployment bootstrap, not as a signed public APT
+repository.
+
+After extracting the artifact, add its absolute path as a trusted file source:
+
+```sh
+repo=/absolute/path/to/apt-repository
+echo "deb [trusted=yes] file:$repo stable main" | \
+  sudo tee /etc/apt/sources.list.d/cyclo-local.list
+sudo apt update
+sudo apt install cyclo-agent dcomp cyclo-provider-pooler
+```
+
+Keep Ubuntu's ordinary package sources enabled: the Cyclo packages depend on
+system packages such as Docker Engine, Git, and Python. `sources.lock.json` in
+the parent artifact directory records the exact upstream source commits used to
+build this repository.
+EOF
+
+mv "$stage" "$repository"
+stage=
+printf '%s\n' "build apt repository: PASS"
+printf '%s\n' "repository: $repository"
