@@ -96,6 +96,8 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("dists/stable/main/binary-amd64/Packages", builder)
         self.assertIn("APT::FTPArchive::Release::Suite", builder)
         self.assertIn("[trusted=yes] file:$repo stable main", builder)
+        self.assertIn('cat > "$artifacts/README.md"', builder)
+        self.assertIn("# Cyclo Debian package artifact", builder)
 
 
 if __name__ == "__main__":

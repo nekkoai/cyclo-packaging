@@ -85,5 +85,28 @@ EOF
 
 mv "$stage" "$repository"
 stage=
+
+cat > "$artifacts/README.md" <<'EOF'
+# Cyclo Debian package artifact
+
+This artifact contains an unsigned local APT repository at `apt-repository/`.
+It contains the Cyclo suite packages, package metadata, build provenance, and
+checksums.
+
+After unzipping:
+
+```sh
+repo=/absolute/path/to/apt-repository
+echo "deb [trusted=yes] file:$repo stable main" | \
+  sudo tee /etc/apt/sources.list.d/cyclo-local.list
+sudo apt update
+sudo apt install cyclo-agent dcomp cyclo-provider-pooler
+```
+
+The repository is intentionally unsigned for now. Keep Ubuntu's normal package
+sources enabled because these packages depend on system packages such as Docker
+Engine, Git, and Python.
+EOF
+
 printf '%s\n' "build apt repository: PASS"
 printf '%s\n' "repository: $repository"
