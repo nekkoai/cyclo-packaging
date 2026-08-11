@@ -1,0 +1,129 @@
+--- a/src/cyclo/state.py
++++ b/src/cyclo/state.py
+@@ -22,6 +22,7 @@
+ HOST_CONFIG_SCOPES = frozenset({"system", "local"})
+ INSTANCE_INTENTS = frozenset({"running", "stopped"})
+ STATE_SCHEMA = 1
++GLOBAL_STATE_ROOT = Path("/var/lib/cyclo")
+
+
+ def utc_now() -> str:
+@@ -209,6 +210,10 @@
+         if scope not in HOST_CONFIG_SCOPES:
+             raise CycloError("host configuration scope must be 'system' or 'local'")
+         self.root = (root or default_state_root()).expanduser().resolve()
++        self._global_state = (
++            os.environ.get("CYCLO_GLOBAL_STATE") == "1"
++            and self.root == GLOBAL_STATE_ROOT
++        )
+         self.instances_dir = self.root / "instances"
+         self.lock_path = self.root / "control.lock"
+         self.pending_batch_path = self.root / "pending-instance-batch.json"
+@@ -220,6 +225,12 @@
+         self._ensured = False
+         self._lock_owner: int | None = None
+
++    def _directory_mode(self) -> int:
++        return 0o777 if self._global_state else 0o700
++
++    def _file_mode(self, private_mode: int) -> int:
++        return 0o666 if self._global_state else private_mode
++
+     @property
+     def system(self) -> str:
+         return installation_id(self.root)
+@@ -271,7 +282,9 @@
+                 )
+             return persisted
+         self.ensure()
+-        self._write_once(self.docker_endpoint_path, selected + "\n", mode=0o600)
++        self._write_once(
++            self.docker_endpoint_path, selected + "\n", mode=self._file_mode(0o600)
++        )
+         persisted = self._read_one_line(
+             self.docker_endpoint_path,
+             allowed=None,
+@@ -288,15 +301,16 @@
+         if self._ensured:
+             return
+         try:
+-            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+-            os.chmod(self.root, 0o700)
++            self.root.mkdir(mode=self._directory_mode(), parents=True, exist_ok=True)
++            if not self._global_state:
++                os.chmod(self.root, 0o700)
+             for path in (self.instances_dir,):
+                 if path.is_symlink():
+                     raise CycloError(
+                         f"refusing symlinked Cyclo state directory: {path}"
+                     )
+-                path.mkdir(mode=0o700, exist_ok=True)
+-                os.chmod(path, 0o700)
++                path.mkdir(mode=self._directory_mode(), exist_ok=True)
++                os.chmod(path, self._directory_mode())
+             self._sync_directory(self.instances_dir)
+             self._sync_directory(self.root)
+         except CycloError:
+@@ -317,7 +331,7 @@
+         self.ensure()
+         try:
+             stream = self.lock_path.open("a+", encoding="utf-8")
+-            os.chmod(self.lock_path, 0o600)
++            os.chmod(self.lock_path, self._file_mode(0o600))
+             flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)
+             fcntl.flock(stream.fileno(), flags)
+         except BlockingIOError as exc:
+@@ -464,7 +478,9 @@
+             + "\n"
+         ).encode("utf-8")
+         try:
+-            self._replace_file(self.pending_batch_path, content, mode=0o600)
++            self._replace_file(
++                self.pending_batch_path, content, mode=self._file_mode(0o600)
++            )
+             self._publish_instance_batch(documents)
+             self.pending_batch_path.unlink()
+             self._sync_directory(self.root)
+@@ -523,8 +539,8 @@
+                         f"uncommitted Cyclo instance directory is not empty: "
+                         f"{directory}"
+                     )
+-            directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+-            os.chmod(directory, 0o700)
++            directory.mkdir(mode=self._directory_mode(), parents=True, exist_ok=True)
++            os.chmod(directory, self._directory_mode())
+             content = (
+                 json.dumps(
+                     document,
+@@ -534,7 +550,9 @@
+                 )
+                 + "\n"
+             ).encode("utf-8")
+-            self._replace_file(metadata_path, content, mode=0o600)
++            self._replace_file(
++                metadata_path, content, mode=self._file_mode(0o600)
++            )
+             self._sync_directory(directory)
+             self._sync_directory(self.instances_dir)
+         except CycloError:
+@@ -655,7 +673,7 @@
+             self._write_once(
+                 self.host_config_scope_path,
+                 selected + "\n",
+-                mode=0o600,
++                mode=self._file_mode(0o600),
+             )
+             persisted = self._read_one_line(
+                 self.host_config_scope_path,
+@@ -687,7 +705,10 @@
+             metadata = os.fstat(descriptor)
+             if (
+                 not stat.S_ISREG(metadata.st_mode)
+-                or stat.S_IMODE(metadata.st_mode) & 0o077
++                or (
++                    not self._global_state
++                    and stat.S_IMODE(metadata.st_mode) & 0o077
++                )
+                 or metadata.st_size > 4096
+             ):
+                 raise CycloError(f"invalid {label}: {path}")

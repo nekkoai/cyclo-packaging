@@ -81,8 +81,9 @@ make build
 ## Updating an upstream
 
 1. Review the upstream commit and update its entry in `sources.lock.json`.
-2. Update the matching package changelog version; prerelease snapshots use
-   `~gitYYYYMMDD.SHORTSHA-1` so an eventual upstream release sorts newer.
+2. Update the matching package changelog version and `debian_revision` in the
+   lock; prerelease snapshots use `~gitYYYYMMDD.SHORTSHA-N` so an eventual
+   upstream release sorts newer.
 3. Run `make PACKAGE` and inspect the `.deb`, `.buildinfo`, and `.changes` in
    `artifacts/PACKAGE/`.
 4. Update package tests or documentation for any resource/layout change.
@@ -90,8 +91,9 @@ make build
 ## Package boundaries
 
 - `dcomp` installs `/usr/bin/dcomp` and `/usr/bin/dcomp-healthcheck`.
-- `cyclo` owns `/etc/cyclo/host.conf`, which stays comment-only by
-default; credentials remain in a per-user Docker volume.
+- `cyclo` owns `/etc/cyclo/host.conf` and defaults its launcher state root to
+  `/var/lib/cyclo`. The latter is temporarily world-readable and writable for
+  global state; credentials remain in a Docker volume.
 - `cyclo-provider-pooler` installs its complete Docker context at
   `/usr/share/cyclo/components/provider-pooler`. It never edits `host.conf`:
   account IDs, provider ordering, and pool policy belong to the operator.

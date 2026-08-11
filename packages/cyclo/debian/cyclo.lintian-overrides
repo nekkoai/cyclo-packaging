@@ -7,3 +7,5 @@ cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/pas
 cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/passthrough/src/main.mjs]
 # The team Dockerfile copies this file and grants it executable mode in-image.
 cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/team/entrypoint.sh]
+# The temporary global state deployment model deliberately shares this directory.
+cyclo: non-standard-dir-perm 0777 != 0755 [var/lib/cyclo/]

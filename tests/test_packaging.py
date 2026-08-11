@@ -22,10 +22,18 @@ class PackagingLayoutTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(
                     set(source),
-                    {"repository", "ref", "commit", "package_version"},
+                    {
+                        "repository",
+                        "ref",
+                        "commit",
+                        "debian_revision",
+                        "package_version",
+                    },
                 )
                 self.assertRegex(source["repository"], r"^https://github\.com/.+\.git$")
                 self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
+                self.assertIsInstance(source["debian_revision"], int)
+                self.assertGreaterEqual(source["debian_revision"], 1)
                 self.assertRegex(source["package_version"], r"^[0-9][A-Za-z0-9.+~:-]*-[0-9]+$")
 
     def test_every_locked_source_has_a_complete_debian_overlay(self) -> None:
@@ -94,6 +102,20 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("gh release edit", workflow)
         self.assertIn("--prerelease=false", workflow)
         self.assertNotIn("--prerelease\n", workflow)
+
+    def test_cyclo_package_uses_the_global_state_launcher_contract(self) -> None:
+        debian = ROOT / "packages" / "cyclo" / "debian"
+        wrapper = (debian / "cyclo-wrapper").read_text(encoding="utf-8")
+        rules = (debian / "rules").read_text(encoding="utf-8")
+
+        self.assertIn("CYCLO_STATE_ROOT=${CYCLO_STATE_ROOT:-/var/lib/cyclo}", wrapper)
+        self.assertIn("CYCLO_GLOBAL_STATE=1", wrapper)
+        self.assertIn("/usr/lib/cyclo/cyclo-real", wrapper)
+        self.assertEqual((debian / "cyclo.dirs").read_text(), "var/lib/cyclo\n")
+        self.assertTrue((debian / "patches" / "global-state-mode.patch").is_file())
+        self.assertIn("global-state-mode.patch", rules)
+        self.assertIn("install -d -m 0777 debian/cyclo/var/lib/cyclo", rules)
+        self.assertIn("chmod 0777 debian/cyclo/var/lib/cyclo", rules)
 
     def test_apt_repository_builder_emits_a_consumable_unsigned_repository(self) -> None:
         builder = (ROOT / "tools" / "build-apt-repository").read_text(

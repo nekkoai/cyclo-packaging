@@ -1,5 +1,5 @@
-cyclo (0.2.1-1) noble; urgency=medium
+cyclo (0.2.1-2) noble; urgency=medium
 
-  * Add an Ubuntu/Debian package for the Cyclo host CLI.
+  * Use /var/lib/cyclo as the packaged global state root.
 
  -- Gianluca Guida <glguida@tlbflush.org>  Mon, 10 Aug 2026 00:00:00 +0000

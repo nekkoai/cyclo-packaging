@@ -1,9 +1,9 @@
 Cyclo for Ubuntu and Debian
 ---------------------------
 
-Cyclo is a per-user host CLI. Installing this package does not start a daemon,
-create a service account, add users to the docker group, or create Docker
-containers, networks, or volumes.
+Cyclo is a host CLI. Installing this package does not start a daemon, create a
+service account, add users to the docker group, or create Docker containers,
+networks, or volumes.
 
 Runtime prerequisites
 ---------------------
@@ -19,12 +19,20 @@ Cyclo command:
 Configuration and credentials
 -----------------------------
 
-With the default state root, Cyclo reads /etc/cyclo/host.conf. The packaged file
-is a conffile and is intentionally comment-only; leaving it empty routes teams
-directly to Cyclo's credential gateway. Put only provider-component declarations
-there. Do not put API keys or OAuth tokens in that file.
+The packaged `/etc/cyclo/host.conf` is a comment-only example configuration.
+The launcher defaults to `/var/lib/cyclo`, so its active host configuration is
+`/var/lib/cyclo/host.conf`; leaving that file absent routes teams directly to
+Cyclo's credential gateway. Put only provider-component declarations in host
+configuration files. Do not put API keys or OAuth tokens in them.
 
-Cyclo keeps state below ${XDG_STATE_HOME:-$HOME/.local/state}/cyclo. It stores
-provider credentials in a private Docker volume, never in /etc or /var/lib.
-Use --state-root (or CYCLO_STATE_ROOT) when an installation needs independent
-state and a local host.conf.
+The packaged `/usr/bin/cyclo` launcher defaults `CYCLO_STATE_ROOT` to
+`/var/lib/cyclo`. That directory and the state files beneath it are world
+readable and writable for this temporary global-state deployment model. This is
+intentionally unsafe on a multi-user system: any local user can inspect or
+modify Cyclo state. Set `CYCLO_STATE_ROOT` or use `--state-root` to choose an
+independent state root instead.
+
+Provider credentials remain in Cyclo's Docker volume, not in `/var/lib/cyclo`.
+With the launcher default, host configuration is read from
+`/var/lib/cyclo/host.conf`; an explicit alternative state root likewise uses
+its own `host.conf`.

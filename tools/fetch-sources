@@ -35,9 +35,18 @@ def lock_sources() -> dict[str, dict[str, str]]:
     for name, source in sources.items():
         if not isinstance(name, str) or not isinstance(source, dict):
             raise SystemExit(f"invalid source entry in {LOCK_PATH}")
-        if set(source) != {"repository", "ref", "commit", "package_version"}:
+        if set(source) != {
+            "repository",
+            "ref",
+            "commit",
+            "debian_revision",
+            "package_version",
+        }:
             raise SystemExit(f"invalid keys for source {name!r}")
-        if not all(isinstance(value, str) and value for value in source.values()):
+        if not all(
+            isinstance(source[key], str) and source[key]
+            for key in ("repository", "ref", "commit", "package_version")
+        ) or not isinstance(source["debian_revision"], int) or source["debian_revision"] < 1:
             raise SystemExit(f"invalid values for source {name!r}")
     return sources
 

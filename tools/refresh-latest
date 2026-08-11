@@ -65,13 +65,19 @@ def upstream_version(name: str, checkout: Path) -> str:
     return version
 
 
-def package_version(name: str, version: str, checkout: Path, commit: str) -> str:
+def package_version(
+    name: str,
+    version: str,
+    checkout: Path,
+    commit: str,
+    revision: int,
+) -> str:
     if name == "cyclo":
-        return f"{version}-1"
+        return f"{version}-{revision}"
     date = run("git", "show", "-s", "--format=%cs", commit, cwd=checkout).replace(
         "-", ""
     )
-    return f"{version}~git{date}.{commit[:7]}-1"
+    return f"{version}~git{date}.{commit[:7]}-{revision}"
 
 
 def rewrite_changelog(name: str, version: str) -> None:
@@ -148,7 +154,13 @@ def main() -> int:
     for name, source in sorted(sources.items()):
         checkout = CHECKOUT_ROOT / name
         version = upstream_version(name, checkout)
-        resolved = package_version(name, version, checkout, source["commit"])
+        resolved = package_version(
+            name,
+            version,
+            checkout,
+            source["commit"],
+            source["debian_revision"],
+        )
         source["package_version"] = resolved
         rewrite_changelog(name, resolved)
         print(f"refresh {name}: {source['commit'][:12]} -> {resolved}")

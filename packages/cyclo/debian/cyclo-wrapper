@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+export CYCLO_STATE_ROOT=${CYCLO_STATE_ROOT:-/var/lib/cyclo}
+export CYCLO_GLOBAL_STATE=1
+exec /usr/lib/cyclo/cyclo-real "$@"
