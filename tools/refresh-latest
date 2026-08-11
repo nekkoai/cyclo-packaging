@@ -43,7 +43,7 @@ def branch_tip(repository: str, ref: str) -> str | None:
 
 
 def upstream_version(name: str, checkout: Path) -> str:
-    if name == "cyclo-agent":
+    if name == "cyclo":
         try:
             import tomllib
         except ModuleNotFoundError:  # pragma: no cover - requires Python 3.10
@@ -66,7 +66,7 @@ def upstream_version(name: str, checkout: Path) -> str:
 
 
 def package_version(name: str, version: str, checkout: Path, commit: str) -> str:
-    if name == "cyclo-agent":
+    if name == "cyclo":
         return f"{version}-1"
     date = run("git", "show", "-s", "--format=%cs", commit, cwd=checkout).replace(
         "-", ""

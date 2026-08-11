@@ -16,7 +16,7 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertEqual(LOCK["schema_version"], 1)
         self.assertEqual(
             PACKAGES,
-            ("cyclo-agent", "cyclo-provider-pooler", "dcomp"),
+            ("cyclo", "cyclo-provider-pooler", "dcomp"),
         )
         for name, source in LOCK["sources"].items():
             with self.subTest(name=name):
@@ -71,7 +71,7 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:", workflow)
         self.assertIn("contents: write", workflow)
         for name in (
-            "cyclo_agent_branch",
+            "cyclo_branch",
             "dcomp_branch",
             "provider_pooler_branch",
         ):

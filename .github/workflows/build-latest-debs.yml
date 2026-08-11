@@ -3,7 +3,7 @@ name: Build latest Cyclo Debian packages
 on:
   workflow_dispatch:
     inputs:
-      cyclo_agent_branch:
+      cyclo_branch:
         description: Cyclo branch to package
         required: true
         default: main
@@ -44,12 +44,12 @@ jobs:
 
       - name: Resolve requested upstream branch tips
         env:
-          CYCLO_AGENT_BRANCH: ${{ inputs.cyclo_agent_branch }}
+          CYCLO_BRANCH: ${{ inputs.cyclo_branch }}
           DCOMP_BRANCH: ${{ inputs.dcomp_branch }}
           PROVIDER_POOLER_BRANCH: ${{ inputs.provider_pooler_branch }}
         run: |
           ./tools/refresh-latest \
-            --ref "cyclo-agent=$CYCLO_AGENT_BRANCH" \
+            --ref "cyclo=$CYCLO_BRANCH" \
             --ref "dcomp=$DCOMP_BRANCH" \
             --ref "cyclo-provider-pooler=$PROVIDER_POOLER_BRANCH"
 

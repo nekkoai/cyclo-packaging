@@ -10,7 +10,7 @@ Rules-Requires-Root: no
 Package: cyclo-provider-pooler
 Architecture: all
 Depends: ${misc:Depends},
-         cyclo-agent (>= 0.2.1)
+         cyclo (>= 0.2.1)
 Description: quota-aware account pool component for Cyclo providers
  This package installs the immutable Docker build context for Cyclo's provider
  pooler component. The component groups account-qualified models and chooses a

@@ -21,13 +21,13 @@ override_dh_auto_build:
 	cd debian/build && python3 -m build --no-isolation --wheel --outdir dist
 
 override_dh_auto_install:
-	rm -rf debian/cyclo-agent
-	python3 -m installer --destdir=debian/cyclo-agent --prefix=/usr \
+	rm -rf debian/cyclo
+	python3 -m installer --destdir=debian/cyclo --prefix=/usr \
 		debian/build/dist/cyclo_agent-*.whl
-	mkdir -p debian/cyclo-agent/usr/bin debian/cyclo-agent/usr/lib/python3/dist-packages
-	mv debian/cyclo-agent/usr/local/bin/cyclo debian/cyclo-agent/usr/bin/cyclo
-	site_packages=$$(find debian/cyclo-agent/usr/local/lib -type d -name dist-packages -print -quit); test -n "$$site_packages"; cp -a "$$site_packages"/. debian/cyclo-agent/usr/lib/python3/dist-packages/
-	rm -rf debian/cyclo-agent/usr/local
+	mkdir -p debian/cyclo/usr/bin debian/cyclo/usr/lib/python3/dist-packages
+	mv debian/cyclo/usr/local/bin/cyclo debian/cyclo/usr/bin/cyclo
+	site_packages=$$(find debian/cyclo/usr/local/lib -type d -name dist-packages -print -quit); test -n "$$site_packages"; cp -a "$$site_packages"/. debian/cyclo/usr/lib/python3/dist-packages/
+	rm -rf debian/cyclo/usr/local
 
 override_dh_auto_test:
 	:

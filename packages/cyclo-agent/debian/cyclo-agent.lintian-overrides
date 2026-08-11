@@ -1,9 +1,0 @@
-# These are immutable Docker build-context resources. They execute only inside
-# the component images, whose Dockerfiles install Node.js; the host CLI does
-# not require Node.js.
-cyclo-agent: missing-dep-for-interpreter node (does not satisfy nodejs:any) [usr/lib/python3/dist-packages/cyclo/components/protocol/component/src/check.mjs]
-cyclo-agent: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/gateway/src/main.mjs]
-cyclo-agent: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/passthrough/src/healthcheck.mjs]
-cyclo-agent: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/passthrough/src/main.mjs]
-# The team Dockerfile copies this file and grants it executable mode in-image.
-cyclo-agent: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/team/entrypoint.sh]

@@ -1,4 +1,4 @@
-cyclo-agent (0.2.1-1) noble; urgency=medium
+cyclo (0.2.1-1) noble; urgency=medium
 
   * Add an Ubuntu/Debian package for the Cyclo host CLI.
 

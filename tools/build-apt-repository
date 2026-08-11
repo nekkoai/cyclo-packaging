@@ -74,7 +74,7 @@ repo=/absolute/path/to/apt-repository
 echo "deb [trusted=yes] file:$repo stable main" | \
   sudo tee /etc/apt/sources.list.d/cyclo-local.list
 sudo apt update
-sudo apt install cyclo-agent dcomp cyclo-provider-pooler
+sudo apt install cyclo dcomp cyclo-provider-pooler
 ```
 
 Keep Ubuntu's ordinary package sources enabled: the Cyclo packages depend on
@@ -100,7 +100,7 @@ repo=/absolute/path/to/apt-repository
 echo "deb [trusted=yes] file:$repo stable main" | \
   sudo tee /etc/apt/sources.list.d/cyclo-local.list
 sudo apt update
-sudo apt install cyclo-agent dcomp cyclo-provider-pooler
+sudo apt install cyclo dcomp cyclo-provider-pooler
 ```
 
 The repository is intentionally unsigned for now. Keep Ubuntu's normal package

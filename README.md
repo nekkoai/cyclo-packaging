@@ -10,7 +10,7 @@ repositories.
 | Package | Upstream | Purpose |
 | --- | --- | --- |
 | `dcomp` | DComp | Docker component lifecycle command required by Cyclo |
-| `cyclo-agent` | Cyclo | Host CLI, immutable runtime resources, and system host.conf conffile |
+| `cyclo` | Cyclo | Host CLI, immutable runtime resources, and system host.conf conffile |
 | `cyclo-provider-pooler` | Provider Pooler | Docker build context for the optional quota-aware Provider component |
 
 The source lock records each upstream URL, branch, immutable commit, and Debian
@@ -26,7 +26,7 @@ or deliberately provision that toolchain in the builder.
 
 The runtime packages deliberately do not start services, alter Docker-group
 membership, create users, or create Docker resources. The deployment APT
-repository must publish `dcomp` beside `cyclo-agent`, because Cyclo requires
+repository must publish `dcomp` beside `cyclo`, because Cyclo requires
 DComp machine API 1 at runtime.
 
 ## Workflow
@@ -41,7 +41,7 @@ Build every package into `artifacts/`, or build one package:
 
 ```sh
 make build
-make cyclo-agent
+make cyclo
 make dcomp
 make cyclo-provider-pooler
 ```
@@ -90,7 +90,7 @@ make build
 ## Package boundaries
 
 - `dcomp` installs `/usr/bin/dcomp` and `/usr/bin/dcomp-healthcheck`.
-- `cyclo-agent` owns `/etc/cyclo/host.conf`, which stays comment-only by
+- `cyclo` owns `/etc/cyclo/host.conf`, which stays comment-only by
 default; credentials remain in a per-user Docker volume.
 - `cyclo-provider-pooler` installs its complete Docker context at
   `/usr/share/cyclo/components/provider-pooler`. It never edits `host.conf`:

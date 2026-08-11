@@ -3,7 +3,7 @@ set -eu
 
 [ "$(cyclo --version)" = "cyclo 0.2.1" ]
 test -f /etc/cyclo/host.conf
-test -f /usr/share/doc/cyclo-agent/README.Debian.gz
+test -f /usr/share/doc/cyclo/README.Debian.gz
 
 work_root=$(mktemp -d)
 cleanup() {

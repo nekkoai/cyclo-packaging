@@ -1,4 +1,4 @@
-PACKAGES := cyclo-agent dcomp cyclo-provider-pooler
+PACKAGES := cyclo dcomp cyclo-provider-pooler
 
 .PHONY: fetch refresh-latest build lint test clean $(PACKAGES)
 
@@ -11,7 +11,7 @@ refresh-latest:
 build:
 	./tools/build-packages $(PACKAGES)
 
-cyclo-agent dcomp cyclo-provider-pooler:
+cyclo dcomp cyclo-provider-pooler:
 	./tools/build-packages $@
 
 lint:
