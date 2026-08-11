@@ -69,6 +69,7 @@ class PackagingLayoutTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("contents: write", workflow)
         for name in (
             "cyclo_agent_branch",
             "dcomp_branch",
@@ -87,6 +88,9 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("artifacts/sources.lock.json", workflow)
         self.assertIn("SHA256SUMS", workflow)
         self.assertIn("packaging-version-updates.patch || true", workflow)
+        self.assertIn("zip -q -r", workflow)
+        self.assertIn("gh release create", workflow)
+        self.assertIn("gh release upload", workflow)
 
     def test_apt_repository_builder_emits_a_consumable_unsigned_repository(self) -> None:
         builder = (ROOT / "tools" / "build-apt-repository").read_text(

@@ -67,8 +67,9 @@ DComp's `master`). It resolves the resulting branch tips, derives the
 corresponding Debian versions, builds the complete suite, and uploads the `.deb`,
 `.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, generated
 packaging-version patch, checksums, and an unsigned `apt-repository/` as one
-GitHub Actions artifact. It does not commit the refreshed lock or changelogs
-back to this repository.
+GitHub Actions artifact. The same artifact contents are also compressed into a
+ZIP asset on a GitHub Release tagged for that workflow run. It does not commit
+the refreshed lock or changelogs back to this repository.
 
 Use the same refresh locally before an intentional lock update:
 

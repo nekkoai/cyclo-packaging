@@ -20,7 +20,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -40,7 +40,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             apt-utils build-essential debhelper dh-python golang-go python3-all python3-build \
-            python3-installer python3-setuptools python3-wheel
+            python3-installer python3-setuptools python3-wheel zip
 
       - name: Resolve requested upstream branch tips
         env:
@@ -72,6 +72,28 @@ jobs:
         run: |
           find artifacts -type f ! -name SHA256SUMS -print0 | sort -z | \
             xargs -0 sha256sum > artifacts/SHA256SUMS
+
+      - name: Create release ZIP
+        run: |
+          archive="$RUNNER_TEMP/cyclo-debian-packages-${GITHUB_RUN_NUMBER}.zip"
+          (cd artifacts && zip -q -r "$archive" .)
+          mv "$archive" artifacts/
+
+      - name: Publish release ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: apt-${{ github.run_id }}
+          RELEASE_ARCHIVE: artifacts/cyclo-debian-packages-${{ github.run_number }}.zip
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$RELEASE_ARCHIVE" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$RELEASE_ARCHIVE" \
+              --target "$GITHUB_SHA" \
+              --title "Cyclo Debian packages #${GITHUB_RUN_NUMBER}" \
+              --notes "Manual package build from run ${GITHUB_RUN_ID}." \
+              --prerelease
+          fi
 
       - name: Publish Debian packages
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
