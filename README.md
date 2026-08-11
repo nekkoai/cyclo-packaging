@@ -59,17 +59,32 @@ make test
 
 ## GitHub build artifacts
 
-The **Build latest Cyclo Debian packages** workflow is manual-only. Its dispatch
+The **Build latest Cyclo Debian packages** workflow runs on every push to this
+repository's `main` branch and can also be dispatched manually. Its dispatch
 form accepts a branch name for Cyclo, DComp, and provider-pooler; each input
 defaults to `main`. If an upstream has not renamed its locked default branch,
 a requested `main` falls back explicitly to that locked branch (currently
 DComp's `master`). It resolves the resulting branch tips, derives the
-corresponding Debian versions, builds the complete suite, and uploads the `.deb`,
-`.ddeb`, `.buildinfo`, `.changes`, resolved `sources.lock.json`, generated
-packaging-version patch, checksums, and an unsigned `apt-repository/` as one
-GitHub Actions artifact. The same artifact contents are also compressed into a
-ZIP asset on a GitHub Release tagged for that workflow run. It does not commit
-the refreshed lock or changelogs back to this repository.
+corresponding Debian versions, and builds the complete suite.
+
+Each run publishes its ZIP artifact and a flat unsigned APT repository as assets
+on a GitHub Release tagged `apt-<run-id>`. When this repository is public,
+servers can track the newest release directly:
+
+```sh
+echo 'deb [trusted=yes] https://github.com/nekkoai/cyclo-packaging/releases/latest/download/ ./' | \
+  sudo tee /etc/apt/sources.list.d/cyclo.list
+sudo apt update
+sudo apt install cyclo dcomp cyclo-provider-pooler
+```
+
+Replace `latest` with a specific `apt-<run-id>` tag to pin a build. The release
+also remains available as a 30-day Actions artifact and includes `.buildinfo`,
+`.changes`, resolved `sources.lock.json`, the generated packaging-version patch,
+and checksums. The repository is intentionally unsigned for now, so
+`[trusted=yes]` is required; add signed APT metadata before using it in a
+hostile or production environment. The workflow does not commit refreshed locks
+or changelogs back to this repository.
 
 Use the same refresh locally before an intentional lock update:
 

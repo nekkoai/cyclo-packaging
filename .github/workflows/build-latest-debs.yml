@@ -1,6 +1,9 @@
 name: Build latest Cyclo Debian packages
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       cyclo_branch:
@@ -44,9 +47,9 @@ jobs:
 
       - name: Resolve requested upstream branch tips
         env:
-          CYCLO_BRANCH: ${{ inputs.cyclo_branch }}
-          DCOMP_BRANCH: ${{ inputs.dcomp_branch }}
-          PROVIDER_POOLER_BRANCH: ${{ inputs.provider_pooler_branch }}
+          CYCLO_BRANCH: ${{ inputs.cyclo_branch || 'main' }}
+          DCOMP_BRANCH: ${{ inputs.dcomp_branch || 'main' }}
+          PROVIDER_POOLER_BRANCH: ${{ inputs.provider_pooler_branch || 'main' }}
         run: |
           ./tools/refresh-latest \
             --ref "cyclo=$CYCLO_BRANCH" \
@@ -79,20 +82,24 @@ jobs:
           (cd artifacts && zip -q -r "$archive" .)
           mv "$archive" artifacts/
 
-      - name: Publish release ZIP
+      - name: Publish release ZIP and flat APT repository
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: apt-${{ github.run_id }}
           RELEASE_ARCHIVE: artifacts/cyclo-debian-packages-${{ github.run_number }}.zip
         run: |
+          mapfile -d '' release_assets < <(
+            find artifacts/apt-repository -maxdepth 1 -type f -print0 | sort -z
+          )
+          release_assets+=("$RELEASE_ARCHIVE")
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$RELEASE_ARCHIVE" --clobber
+            gh release upload "$RELEASE_TAG" "${release_assets[@]}" --clobber
             gh release edit "$RELEASE_TAG" --draft=false --prerelease=false
           else
-            gh release create "$RELEASE_TAG" "$RELEASE_ARCHIVE" \
+            gh release create "$RELEASE_TAG" "${release_assets[@]}" \
               --target "$GITHUB_SHA" \
               --title "Cyclo Debian packages #${GITHUB_RUN_NUMBER}" \
-              --notes "Manual package build from run ${GITHUB_RUN_ID}."
+              --notes "Package build from run ${GITHUB_RUN_ID}. Install from the flat APT repository at releases/latest/download/."
           fi
 
       - name: Publish Debian packages

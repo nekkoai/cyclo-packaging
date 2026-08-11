@@ -1,5 +1,5 @@
 #!/bin/sh
-# Assemble an unsigned local APT repository from built Cyclo-suite packages.
+# Assemble a flat, unsigned APT repository suitable for GitHub Release assets.
 set -eu
 
 fail() {
@@ -39,48 +39,48 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-mkdir -p "$stage/pool/main" "$stage/dists/stable/main/binary-amd64"
+# GitHub Release assets are addressed as /releases/download/TAG/ASSET. Keep the
+# Packages index and every referenced package at that same flat URL level.
 find "$artifacts" -path "$stage" -prune -o \
     -type f \( -name '*.deb' -o -name '*.ddeb' \) \
-    -exec cp -a -- {} "$stage/pool/main/" \;
-set -- "$stage/pool/main"/*
+    -exec cp -a -- {} "$stage/" \;
+set -- "$stage"/*.deb "$stage"/*.ddeb
 [ -f "$1" ] || fail "no .deb or .ddeb package found under $artifacts"
 
 (
     cd "$stage"
-    apt-ftparchive packages pool/main > dists/stable/main/binary-amd64/Packages
-    gzip -9n -k dists/stable/main/binary-amd64/Packages
+    apt-ftparchive packages . > Packages
+    gzip -9n -k Packages
     apt-ftparchive \
         -o APT::FTPArchive::Release::Origin="Nekko AI" \
         -o APT::FTPArchive::Release::Label="Cyclo" \
         -o APT::FTPArchive::Release::Suite="stable" \
         -o APT::FTPArchive::Release::Codename="stable" \
         -o APT::FTPArchive::Release::Architectures="amd64" \
-        -o APT::FTPArchive::Release::Components="main" \
-        release dists/stable > dists/stable/Release
+        release . > Release
 )
 
 cat > "$stage/README.md" <<'EOF'
-# Cyclo local APT repository
+# Cyclo flat APT repository
 
-This repository is intentionally unsigned. It is packaged as a GitHub Actions
-artifact for local testing and deployment bootstrap, not as a signed public APT
-repository.
+This is an unsigned, flat APT repository. Its files are uploaded individually
+as assets of a public GitHub Release so APT can resolve both `Packages.gz` and
+package files from one URL base.
 
-After extracting the artifact, add its absolute path as a trusted file source:
+For the most recently published package release:
 
 ```sh
-repo=/absolute/path/to/apt-repository
-echo "deb [trusted=yes] file:$repo stable main" | \
-  sudo tee /etc/apt/sources.list.d/cyclo-local.list
+echo 'deb [trusted=yes] https://github.com/nekkoai/cyclo-packaging/releases/latest/download/ ./' | \
+  sudo tee /etc/apt/sources.list.d/cyclo.list
 sudo apt update
 sudo apt install cyclo dcomp cyclo-provider-pooler
 ```
 
-Keep Ubuntu's ordinary package sources enabled: the Cyclo packages depend on
-system packages such as Docker Engine, Git, and Python. `sources.lock.json` in
-the parent artifact directory records the exact upstream source commits used to
-build this repository.
+To pin a specific release, replace `latest` with its `apt-<run-id>` release tag.
+The GitHub repository and release must be public for unauthenticated APT
+clients. `[trusted=yes]` deliberately bypasses APT signature verification and
+is only a bootstrap mechanism; use signed repository metadata before relying
+on this for a hostile or production environment.
 EOF
 
 mv "$stage" "$repository"
@@ -89,23 +89,21 @@ stage=
 cat > "$artifacts/README.md" <<'EOF'
 # Cyclo Debian package artifact
 
-This artifact contains an unsigned local APT repository at `apt-repository/`.
-It contains the Cyclo suite packages, package metadata, build provenance, and
-checksums.
-
-After unzipping:
+This artifact contains a flat unsigned APT repository at `apt-repository/`.
+The workflow also uploads every file in that directory as a GitHub Release
+asset. For a public repository, servers can use the release's stable asset URL:
 
 ```sh
-repo=/absolute/path/to/apt-repository
-echo "deb [trusted=yes] file:$repo stable main" | \
-  sudo tee /etc/apt/sources.list.d/cyclo-local.list
+echo 'deb [trusted=yes] https://github.com/nekkoai/cyclo-packaging/releases/latest/download/ ./' | \
+  sudo tee /etc/apt/sources.list.d/cyclo.list
 sudo apt update
 sudo apt install cyclo dcomp cyclo-provider-pooler
 ```
 
-The repository is intentionally unsigned for now. Keep Ubuntu's normal package
-sources enabled because these packages depend on system packages such as Docker
-Engine, Git, and Python.
+Pin a server to a specific build by replacing `latest` with `apt-<run-id>`.
+The repository is intentionally unsigned for now, so `[trusted=yes]` is
+required. Keep Ubuntu's normal package sources enabled because these packages
+depend on system packages such as Docker Engine, Git, and Python.
 EOF
 
 printf '%s\n' "build apt repository: PASS"

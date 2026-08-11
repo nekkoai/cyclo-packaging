@@ -72,7 +72,7 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("overrides.get(name, locked_ref)", refresh)
         self.assertIn("requested main is unavailable", refresh)
 
-    def test_manual_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
+    def test_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "build-latest-debs.yml").read_text(
             encoding="utf-8"
         )
@@ -85,8 +85,11 @@ class PackagingLayoutTests(unittest.TestCase):
         ):
             self.assertIn(f"{name}:", workflow)
         self.assertEqual(workflow.count("default: main"), 3)
-        self.assertNotIn("push:", workflow)
+        self.assertIn("push:\n    branches:\n      - main", workflow)
         self.assertNotIn("pull_request:", workflow)
+        self.assertIn("inputs.cyclo_branch || 'main'", workflow)
+        self.assertIn("inputs.dcomp_branch || 'main'", workflow)
+        self.assertIn("inputs.provider_pooler_branch || 'main'", workflow)
         self.assertIn("./tools/refresh-latest", workflow)
         self.assertIn("./tools/build-packages --output artifacts", workflow)
         self.assertIn("apt-utils", workflow)
@@ -97,6 +100,8 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("SHA256SUMS", workflow)
         self.assertIn("packaging-version-updates.patch || true", workflow)
         self.assertIn("zip -q -r", workflow)
+        self.assertIn("find artifacts/apt-repository -maxdepth 1 -type f", workflow)
+        self.assertIn("release_assets+=(\"$RELEASE_ARCHIVE\")", workflow)
         self.assertIn("gh release create", workflow)
         self.assertIn("gh release upload", workflow)
         self.assertIn("gh release edit", workflow)
@@ -117,14 +122,17 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("install -d -m 0777 debian/cyclo/var/lib/cyclo", rules)
         self.assertIn("chmod 0777 debian/cyclo/var/lib/cyclo", rules)
 
-    def test_apt_repository_builder_emits_a_consumable_unsigned_repository(self) -> None:
+    def test_apt_repository_builder_emits_a_flat_github_release_repository(self) -> None:
         builder = (ROOT / "tools" / "build-apt-repository").read_text(
             encoding="utf-8"
         )
-        self.assertIn("apt-ftparchive packages pool/main", builder)
-        self.assertIn("dists/stable/main/binary-amd64/Packages", builder)
-        self.assertIn("APT::FTPArchive::Release::Suite", builder)
-        self.assertIn("[trusted=yes] file:$repo stable main", builder)
+        self.assertIn("apt-ftparchive packages . > Packages", builder)
+        self.assertIn("gzip -9n -k Packages", builder)
+        self.assertIn("release . > Release", builder)
+        self.assertNotIn("pool/main", builder)
+        self.assertNotIn("dists/stable", builder)
+        self.assertIn("releases/latest/download/ ./", builder)
+        self.assertIn("apt-<run-id>", builder)
         self.assertIn('cat > "$artifacts/README.md"', builder)
         self.assertIn("# Cyclo Debian package artifact", builder)
 
