@@ -87,12 +87,12 @@ jobs:
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "$RELEASE_ARCHIVE" --clobber
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=false
           else
             gh release create "$RELEASE_TAG" "$RELEASE_ARCHIVE" \
               --target "$GITHUB_SHA" \
               --title "Cyclo Debian packages #${GITHUB_RUN_NUMBER}" \
-              --notes "Manual package build from run ${GITHUB_RUN_ID}." \
-              --prerelease
+              --notes "Manual package build from run ${GITHUB_RUN_ID}."
           fi
 
       - name: Publish Debian packages

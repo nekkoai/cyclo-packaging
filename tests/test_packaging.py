@@ -91,6 +91,9 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("zip -q -r", workflow)
         self.assertIn("gh release create", workflow)
         self.assertIn("gh release upload", workflow)
+        self.assertIn("gh release edit", workflow)
+        self.assertIn("--prerelease=false", workflow)
+        self.assertNotIn("--prerelease\n", workflow)
 
     def test_apt_repository_builder_emits_a_consumable_unsigned_repository(self) -> None:
         builder = (ROOT / "tools" / "build-apt-repository").read_text(
