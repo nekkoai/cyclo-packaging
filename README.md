@@ -61,11 +61,12 @@ make test
 
 The **Build latest Cyclo Debian packages** workflow runs on every push to this
 repository's `main` branch and can also be dispatched manually. Its dispatch
-form accepts a branch name for Cyclo, DComp, and provider-pooler; each input
-defaults to `main`. If an upstream has not renamed its locked default branch,
-a requested `main` falls back explicitly to that locked branch (currently
-DComp's `master`). It resolves the resulting branch tips, derives the
-corresponding Debian versions, and builds the complete suite.
+form accepts either a branch name or exact tag for Cyclo, DComp, and
+provider-pooler; each input defaults to `main`. An annotated tag is peeled to
+its tagged commit. If an upstream has not renamed its locked default branch, a
+requested `main` falls back explicitly to that locked ref (currently DComp's
+`master`). It resolves the requested refs, derives the corresponding Debian
+versions, and builds the complete suite.
 
 Each run publishes its ZIP artifact and a flat unsigned APT repository as assets
 on a GitHub Release tagged `apt-<run-id>`. When this repository is public,

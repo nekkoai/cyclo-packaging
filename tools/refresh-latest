@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve each locked branch to its current tip and refresh package versions."""
+"""Resolve each locked branch or exact tag and refresh package versions."""
 
 from __future__ import annotations
 
@@ -28,18 +28,30 @@ def run(*command: str, cwd: Path | None = None) -> str:
     return completed.stdout.strip()
 
 
-def branch_tip(repository: str, ref: str) -> str | None:
-    reference = f"refs/heads/{ref}"
-    output = run("git", "ls-remote", repository, reference)
-    lines = output.splitlines()
-    if not lines:
-        return None
-    if len(lines) != 1:
-        raise SystemExit(f"expected one branch tip for {repository} {reference}")
-    commit, actual_ref = lines[0].split("\t", 1)
-    if actual_ref != reference or not re.fullmatch(r"[0-9a-f]{40}", commit):
-        raise SystemExit(f"invalid branch tip for {repository} {reference}: {lines[0]!r}")
-    return commit
+def resolve_ref(repository: str, ref: str) -> tuple[str, str] | None:
+    """Resolve a branch name or an exact tag name to its peeled commit."""
+
+    branch = f"refs/heads/{ref}"
+    tag = f"refs/tags/{ref}"
+    output = run("git", "ls-remote", repository, branch, tag, f"{tag}^{{}}")
+    found: dict[str, str] = {}
+    for line in output.splitlines():
+        try:
+            commit, actual_ref = line.split("\t", 1)
+        except ValueError as exc:
+            raise SystemExit(f"invalid ref result for {repository} {ref}: {line!r}") from exc
+        if actual_ref not in {branch, tag, f"{tag}^{{}}"} or not re.fullmatch(
+            r"[0-9a-f]{40}", commit
+        ):
+            raise SystemExit(f"invalid ref result for {repository} {ref}: {line!r}")
+        found[actual_ref] = commit
+    if branch in found:
+        return ref, found[branch]
+    if f"{tag}^{{}}" in found:
+        return ref, found[f"{tag}^{{}}"]
+    if tag in found:
+        return ref, found[tag]
+    return None
 
 
 def upstream_version(name: str, checkout: Path) -> str:
@@ -111,8 +123,8 @@ def main() -> int:
         "--ref",
         action="append",
         default=[],
-        metavar="SOURCE=BRANCH",
-        help="override one locked branch for this refresh; repeatable",
+        metavar="SOURCE=REF",
+        help="override one locked branch name or exact tag name; repeatable",
     )
     args = parser.parse_args()
     overrides: dict[str, str] = {}
@@ -132,22 +144,21 @@ def main() -> int:
     for name, source in sources.items():
         locked_ref = source["ref"]
         requested_ref = overrides.get(name, locked_ref)
-        commit = branch_tip(source["repository"], requested_ref)
-        if commit is None and requested_ref == "main" and locked_ref != "main":
-            commit = branch_tip(source["repository"], locked_ref)
-            if commit is not None:
+        resolved = resolve_ref(source["repository"], requested_ref)
+        if resolved is None and requested_ref == "main" and locked_ref != "main":
+            resolved = resolve_ref(source["repository"], locked_ref)
+            if resolved is not None:
                 print(
                     f"refresh {name}: requested main is unavailable; "
-                    f"using locked branch {locked_ref}",
+                    f"using locked ref {locked_ref}",
                     file=sys.stderr,
                 )
                 requested_ref = locked_ref
-        if commit is None:
+        if resolved is None:
             raise SystemExit(
-                f"branch not found: {source['repository']} refs/heads/{requested_ref}"
+                f"branch or tag not found: {source['repository']} {requested_ref}"
             )
-        source["ref"] = requested_ref
-        source["commit"] = commit
+        source["ref"], source["commit"] = resolved
     LOCK_PATH.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
     subprocess.run([str(ROOT / "tools" / "fetch-sources"), *sorted(sources)], check=True)

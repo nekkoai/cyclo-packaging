@@ -6,18 +6,18 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      cyclo_branch:
-        description: Cyclo branch to package
+      cyclo_ref:
+        description: Cyclo branch name or exact tag to package
         required: true
         default: main
         type: string
-      dcomp_branch:
-        description: DComp branch to package
+      dcomp_ref:
+        description: DComp branch name or exact tag to package
         required: true
         default: main
         type: string
-      provider_pooler_branch:
-        description: Provider-pooler branch to package
+      provider_pooler_ref:
+        description: Provider-pooler branch name or exact tag to package
         required: true
         default: main
         type: string
@@ -47,14 +47,14 @@ jobs:
 
       - name: Resolve requested upstream branch tips
         env:
-          CYCLO_BRANCH: ${{ inputs.cyclo_branch || 'main' }}
-          DCOMP_BRANCH: ${{ inputs.dcomp_branch || 'main' }}
-          PROVIDER_POOLER_BRANCH: ${{ inputs.provider_pooler_branch || 'main' }}
+          CYCLO_REF: ${{ inputs.cyclo_ref || 'main' }}
+          DCOMP_REF: ${{ inputs.dcomp_ref || 'main' }}
+          PROVIDER_POOLER_REF: ${{ inputs.provider_pooler_ref || 'main' }}
         run: |
           ./tools/refresh-latest \
-            --ref "cyclo=$CYCLO_BRANCH" \
-            --ref "dcomp=$DCOMP_BRANCH" \
-            --ref "cyclo-provider-pooler=$PROVIDER_POOLER_BRANCH"
+            --ref "cyclo=$CYCLO_REF" \
+            --ref "dcomp=$DCOMP_REF" \
+            --ref "cyclo-provider-pooler=$PROVIDER_POOLER_REF"
 
       - name: Validate packaging repository
         run: make test

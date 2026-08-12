@@ -70,6 +70,9 @@ class PackagingLayoutTests(unittest.TestCase):
         refresh = (ROOT / "tools" / "refresh-latest").read_text(encoding="utf-8")
         self.assertIn('"--ref"', refresh)
         self.assertIn("overrides.get(name, locked_ref)", refresh)
+        self.assertIn("def resolve_ref", refresh)
+        self.assertIn("refs/tags/{ref}", refresh)
+        self.assertIn("branch or tag not found", refresh)
         self.assertIn("requested main is unavailable", refresh)
 
     def test_workflow_refreshes_and_publishes_the_complete_suite(self) -> None:
@@ -79,17 +82,18 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:", workflow)
         self.assertIn("contents: write", workflow)
         for name in (
-            "cyclo_branch",
-            "dcomp_branch",
-            "provider_pooler_branch",
+            "cyclo_ref",
+            "dcomp_ref",
+            "provider_pooler_ref",
         ):
             self.assertIn(f"{name}:", workflow)
+        self.assertIn("branch name or exact tag", workflow)
         self.assertEqual(workflow.count("default: main"), 3)
         self.assertIn("push:\n    branches:\n      - main", workflow)
         self.assertNotIn("pull_request:", workflow)
-        self.assertIn("inputs.cyclo_branch || 'main'", workflow)
-        self.assertIn("inputs.dcomp_branch || 'main'", workflow)
-        self.assertIn("inputs.provider_pooler_branch || 'main'", workflow)
+        self.assertIn("inputs.cyclo_ref || 'main'", workflow)
+        self.assertIn("inputs.dcomp_ref || 'main'", workflow)
+        self.assertIn("inputs.provider_pooler_ref || 'main'", workflow)
         self.assertIn("./tools/refresh-latest", workflow)
         self.assertIn("./tools/build-packages --output artifacts", workflow)
         self.assertIn("apt-utils", workflow)
