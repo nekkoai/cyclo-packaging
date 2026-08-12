@@ -12,7 +12,6 @@ override_dh_auto_build:
 	rm -rf debian/build
 	mkdir -p debian/build
 	cp -a LICENSE README.md pyproject.toml src debian/build/
-	patch -p1 -d debian/build < debian/patches/global-state-mode.patch
 	sed -i \
 		-e 's/setuptools==83\.0\.0/setuptools/' \
 		-e 's/wheel==0\.47\.0/wheel/' \
@@ -25,9 +24,8 @@ override_dh_auto_install:
 	rm -rf debian/cyclo
 	python3 -m installer --destdir=debian/cyclo --prefix=/usr \
 		debian/build/dist/cyclo_agent-*.whl
-	mkdir -p debian/cyclo/usr/bin debian/cyclo/usr/lib/cyclo debian/cyclo/usr/lib/python3/dist-packages
-	mv debian/cyclo/usr/local/bin/cyclo debian/cyclo/usr/lib/cyclo/cyclo-real
-	install -m 0755 debian/cyclo-wrapper debian/cyclo/usr/bin/cyclo
+	mkdir -p debian/cyclo/usr/bin debian/cyclo/usr/lib/python3/dist-packages
+	mv debian/cyclo/usr/local/bin/cyclo debian/cyclo/usr/bin/cyclo
 	site_packages=$$(find debian/cyclo/usr/local/lib -type d -name dist-packages -print -quit); test -n "$$site_packages"; cp -a "$$site_packages"/. debian/cyclo/usr/lib/python3/dist-packages/
 	install -d -m 0777 debian/cyclo/var/lib/cyclo
 	rm -rf debian/cyclo/usr/local

@@ -26,6 +26,6 @@ Description: Git-defined agent teams through an isolated credential proxy
  Docker lifecycle and durable component topology.
  .
  This package installs only the host command and its immutable resources. It
- neither starts containers nor creates system users during installation. Cyclo
- uses a temporary world-writable global state directory at /var/lib/cyclo;
- Docker access is required at runtime.
+ neither starts containers nor creates system users during installation. It
+ creates /var/lib/cyclo as the default shared host realm; Docker access is
+ required at runtime.

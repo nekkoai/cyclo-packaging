@@ -108,17 +108,18 @@ class PackagingLayoutTests(unittest.TestCase):
         self.assertIn("--prerelease=false", workflow)
         self.assertNotIn("--prerelease\n", workflow)
 
-    def test_cyclo_package_uses_the_global_state_launcher_contract(self) -> None:
+    def test_cyclo_package_uses_upstream_shared_realm_without_source_patches(self) -> None:
         debian = ROOT / "packages" / "cyclo" / "debian"
-        wrapper = (debian / "cyclo-wrapper").read_text(encoding="utf-8")
         rules = (debian / "rules").read_text(encoding="utf-8")
+        cyclo = LOCK["sources"]["cyclo"]
 
-        self.assertIn("CYCLO_STATE_ROOT=${CYCLO_STATE_ROOT:-/var/lib/cyclo}", wrapper)
-        self.assertIn("CYCLO_GLOBAL_STATE=1", wrapper)
-        self.assertIn("/usr/lib/cyclo/cyclo-real", wrapper)
+        self.assertEqual(cyclo["ref"], "v0.2.5")
+        self.assertEqual(cyclo["package_version"], "0.2.5-1")
         self.assertEqual((debian / "cyclo.dirs").read_text(), "var/lib/cyclo\n")
-        self.assertTrue((debian / "patches" / "global-state-mode.patch").is_file())
-        self.assertIn("global-state-mode.patch", rules)
+        self.assertFalse((debian / "cyclo-wrapper").exists())
+        self.assertFalse((debian / "patches").exists())
+        self.assertNotIn("global-state-mode.patch", rules)
+        self.assertIn("mv debian/cyclo/usr/local/bin/cyclo debian/cyclo/usr/bin/cyclo", rules)
         self.assertIn("install -d -m 0777 debian/cyclo/var/lib/cyclo", rules)
         self.assertIn("chmod 0777 debian/cyclo/var/lib/cyclo", rules)
 

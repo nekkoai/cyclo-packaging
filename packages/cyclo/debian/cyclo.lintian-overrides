@@ -9,3 +9,11 @@ cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/pas
 cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/team/entrypoint.sh]
 # The temporary global state deployment model deliberately shares this directory.
 cyclo: non-standard-dir-perm 0777 != 0755 [var/lib/cyclo/]
+# The OpenAI and pooler sources are immutable Docker build-context resources.
+# Node.js is installed only in their component images, not on the host.
+cyclo: missing-dep-for-interpreter node (does not satisfy nodejs:any) [usr/lib/python3/dist-packages/cyclo/components/openai/src/healthcheck.mjs]
+cyclo: missing-dep-for-interpreter node (does not satisfy nodejs:any) [usr/lib/python3/dist-packages/cyclo/components/openai/src/main.mjs]
+cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/pooler/src/healthcheck.mjs]
+cyclo: script-not-executable [usr/lib/python3/dist-packages/cyclo/components/pooler/src/main.mjs]
+# This source package supersedes the previous Cyclo host CLI package revision.
+cyclo: initial-upload-closes-no-bugs [usr/share/doc/cyclo/changelog.Debian.gz:1]

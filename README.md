@@ -106,9 +106,9 @@ make build
 ## Package boundaries
 
 - `dcomp` installs `/usr/bin/dcomp` and `/usr/bin/dcomp-healthcheck`.
-- `cyclo` owns `/etc/cyclo/host.conf` and defaults its launcher state root to
-  `/var/lib/cyclo`. The latter is temporarily world-readable and writable for
-  global state; credentials remain in a Docker volume.
+- `cyclo` owns `/etc/cyclo/host.conf` and packages upstream's default shared
+  state root at `/var/lib/cyclo`. The root is temporarily world-readable and
+  writable; credentials remain in a Docker volume.
 - `cyclo-provider-pooler` installs its complete Docker context at
   `/usr/share/cyclo/components/provider-pooler`. It never edits `host.conf`:
   account IDs, provider ordering, and pool policy belong to the operator.

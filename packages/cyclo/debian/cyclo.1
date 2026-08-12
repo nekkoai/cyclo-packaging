@@ -1,4 +1,4 @@
-.TH CYCLO 1 "August 2026" "Cyclo 0.2.1" "User Commands"
+.TH CYCLO 1 "August 2026" "Cyclo 0.2.5" "User Commands"
 .SH NAME
 cyclo \- run Git-defined agent teams through composable model providers
 .SH SYNOPSIS
@@ -12,12 +12,15 @@ is a per-user host command for Git-defined agent teams.  It builds local
 component images and delegates container lifecycle to DComp.  Cyclo requires a
 local Docker Engine and a DComp executable with machine API version 1.
 .PP
-Cyclo does not run as a daemon. The packaged launcher defaults state to
+Cyclo does not run as a daemon. Its upstream default shared realm uses state
+in
 .I /var/lib/cyclo
-unless an explicit state root is selected. This temporary global-state directory
-is world-readable and writable; it is not appropriate for secrets or hostile
-multi-user environments. The default global root reads
-.IR /var/lib/cyclo/host.conf .
+and system configuration in
+.IR /etc/cyclo/host.conf .
+This package creates the state root world-readable and writable as a temporary
+shared-state policy. Cyclo leaves ownership, modes, groups, and ACLs to the
+host filesystem; use a trusted Unix group and ACLs for a secure multi-user
+installation.
 .PP
 Do not run Cyclo as root.  The invoking user must have access to the local
 Docker socket.
@@ -43,11 +46,12 @@ Check the host Docker and DComp prerequisites.
 .SH FILES
 .TP
 .I /var/lib/cyclo
-World-readable and writable global Cyclo state root used by the packaged
-launcher unless CYCLO_STATE_ROOT is selected explicitly.
+Default shared Cyclo state root. This package creates it with mode 0777;
+Cyclo does not alter filesystem access policy at runtime.
 .TP
 .I /etc/cyclo/host.conf
-Comment-only packaged example provider-component configuration.
+Comment-only packaged provider-component configuration for the default shared
+realm.
 .SH SEE ALSO
 The installed README at
 .I /usr/share/doc/cyclo/README.md.gz

@@ -19,20 +19,18 @@ Cyclo command:
 Configuration and credentials
 -----------------------------
 
-The packaged `/etc/cyclo/host.conf` is a comment-only example configuration.
-The launcher defaults to `/var/lib/cyclo`, so its active host configuration is
-`/var/lib/cyclo/host.conf`; leaving that file absent routes teams directly to
-Cyclo's credential gateway. Put only provider-component declarations in host
-configuration files. Do not put API keys or OAuth tokens in them.
+Cyclo 0.2.5 selects `/var/lib/cyclo` as its upstream default shared host
+realm. The package creates that root with mode `0777` for the current temporary
+shared-state policy. Cyclo deliberately leaves state ownership, modes, groups,
+and ACLs to the filesystem; it does not rewrite them at runtime.
 
-The packaged `/usr/bin/cyclo` launcher defaults `CYCLO_STATE_ROOT` to
-`/var/lib/cyclo`. That directory and the state files beneath it are world
-readable and writable for this temporary global-state deployment model. This is
-intentionally unsafe on a multi-user system: any local user can inspect or
-modify Cyclo state. Set `CYCLO_STATE_ROOT` or use `--state-root` to choose an
-independent state root instead.
+The default realm reads `/etc/cyclo/host.conf`, which this package installs as a
+comment-only conffile. Put only provider-component declarations there. Do not
+put API keys or OAuth tokens in that file. `--local` or `--state-root` (and
+`CYCLO_STATE_ROOT`) selects an independent private realm whose `host.conf` is
+inside that root.
 
 Provider credentials remain in Cyclo's Docker volume, not in `/var/lib/cyclo`.
-With the launcher default, host configuration is read from
-`/var/lib/cyclo/host.conf`; an explicit alternative state root likewise uses
-its own `host.conf`.
+A shared deployment needs filesystem access through the complete state tree;
+for a secure multi-user installation, replace the temporary world-writable
+policy with a trusted Unix group and suitable ACLs or a group-aware umask.

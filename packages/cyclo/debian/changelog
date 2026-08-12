@@ -1,5 +1,6 @@
-cyclo (0.2.1-2) noble; urgency=medium
+cyclo (0.2.5-1) noble; urgency=medium
 
-  * Use /var/lib/cyclo as the packaged global state root.
+  * Package Cyclo 0.2.5's upstream shared-realm implementation.
+  * Drop the downstream global-state source patch and launcher wrapper.
 
- -- Gianluca Guida <glguida@tlbflush.org>  Mon, 10 Aug 2026 00:00:00 +0000
+ -- Gianluca Guida <glguida@tlbflush.org>  Wed, 12 Aug 2026 00:00:00 +0000
