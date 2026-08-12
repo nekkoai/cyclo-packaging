@@ -118,8 +118,17 @@ class PackagingLayoutTests(unittest.TestCase):
         cyclo = LOCK["sources"]["cyclo"]
 
         self.assertEqual(cyclo["ref"], "v0.2.5")
-        self.assertEqual(cyclo["package_version"], "0.2.5-1")
+        self.assertEqual(cyclo["package_version"], "0.2.5-2")
         self.assertEqual((debian / "cyclo.dirs").read_text(), "var/lib/cyclo\n")
+        shot = debian / "cyclo-shot"
+        self.assertTrue(shot.read_text(encoding="utf-8").startswith("#!/usr/bin/env python3\n"))
+        self.assertTrue(shot.stat().st_mode & 0o100)
+        self.assertIn("cyclo-shot \\- send a one-shot", (debian / "cyclo-shot.1").read_text())
+        self.assertIn("debian/cyclo-shot.1", (debian / "cyclo.manpages").read_text())
+        self.assertIn(
+            "install -m 0755 debian/cyclo-shot debian/cyclo/usr/bin/cyclo-shot",
+            rules,
+        )
         self.assertFalse((debian / "cyclo-wrapper").exists())
         self.assertFalse((debian / "patches").exists())
         self.assertNotIn("global-state-mode.patch", rules)

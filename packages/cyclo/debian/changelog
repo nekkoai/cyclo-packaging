@@ -1,3 +1,9 @@
+cyclo (0.2.5-2) noble; urgency=medium
+
+  * Install the cyclo-shot one-shot Provider diagnostic client.
+
+ -- Roman <roman@nekko.ai>  Wed, 12 Aug 2026 21:50:00 +0000
+
 cyclo (0.2.5-1) noble; urgency=medium
 
   * Package Cyclo 0.2.5's upstream shared-realm implementation.

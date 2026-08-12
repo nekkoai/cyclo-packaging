@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""Send a one-shot inference request through Cyclo's outer Provider."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import http.client
+import json
+import os
+import struct
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from typing import Any, Iterable
+
+PROVIDER_PATH = "/cyclo.provider.v1.Provider"
+
+
+class ShotError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class Component:
+    name: str
+    container: str
+    system: str
+    state: str
+    health: str
+    links: tuple[str, ...]
+    host_port: int | None
+
+
+def run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(args, check=check, text=True, capture_output=True)
+
+
+def docker_components(system: str | None = None) -> list[Component]:
+    command = ["docker", "ps", "-a", "--filter", "label=io.dcomp.owner=dcomp", "--format", "{{.ID}}"]
+    ids = [line for line in run(*command).stdout.splitlines() if line]
+    if not ids:
+        raise ShotError("no DComp containers found; run `cyclo doctor` first")
+    documents = json.loads(run("docker", "inspect", *ids).stdout)
+    result: list[Component] = []
+    for doc in documents:
+        labels = doc.get("Config", {}).get("Labels", {}) or {}
+        found_system = labels.get("io.dcomp.system", "")
+        if system and found_system != system:
+            continue
+        if labels.get("io.dcomp.kind") != "component":
+            continue
+        bindings = doc.get("NetworkSettings", {}).get("Ports", {}).get("50051/tcp")
+        host_port = None
+        if bindings:
+            loopback = next((item for item in bindings if item.get("HostIp") in {"127.0.0.1", "::1"}), bindings[0])
+            host_port = int(loopback["HostPort"])
+        env = doc.get("Config", {}).get("Env", []) or []
+        links = tuple(sorted(value for value in env if value.startswith("DCOMP_LINK_")))
+        state = doc.get("State", {})
+        health = (state.get("Health") or {}).get("Status", "none")
+        result.append(Component(
+            name=labels.get("io.dcomp.component", "?"),
+            container=doc.get("Name", "").lstrip("/"),
+            system=found_system,
+            state=state.get("Status", "unknown"),
+            health=health,
+            links=links,
+            host_port=host_port,
+        ))
+    if not result:
+        suffix = f" for system {system!r}" if system else ""
+        raise ShotError(f"no Cyclo components found{suffix}")
+    return sorted(result, key=lambda item: item.name)
+
+
+def select_outer(components: Iterable[Component]) -> Component:
+    published = [item for item in components if item.host_port is not None]
+    if len(published) != 1:
+        names = ", ".join(f"{item.system}/{item.name}:{item.host_port}" for item in published) or "none"
+        raise ShotError(f"expected one published outer Provider, found: {names}; use --system if multiple Cyclo installations exist")
+    return published[0]
+
+
+def unary(port: int, method: str, request: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = json.dumps(request or {}, separators=(",", ":")).encode()
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    try:
+        connection.request(
+            "POST",
+            f"{PROVIDER_PATH}/{method}",
+            body=body,
+            headers={
+                "Content-Type": "application/json",
+                "Connect-Protocol-Version": "1",
+            },
+        )
+        response = connection.getresponse()
+        raw = response.read()
+    finally:
+        connection.close()
+    document = json.loads(raw or b"{}")
+    if response.status != 200:
+        raise ShotError(f"{method} failed: HTTP {response.status}: {document}")
+    return document
+
+
+def read_exact(response: http.client.HTTPResponse, size: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = size
+    while remaining:
+        chunk = response.read(remaining)
+        if not chunk:
+            raise ShotError(f"truncated Connect envelope: wanted {remaining} more byte(s)")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def trace(message: str) -> None:
+    print(f"[cyclo-shot] {message}", file=sys.stderr, flush=True)
+
+
+def compact(value: Any, limit: int = 500) -> str:
+    rendered = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return rendered if len(rendered) <= limit else rendered[: limit - 1] + "…"
+
+
+def stream_infer(port: int, model: str, prompt: str, max_tokens: int, show_trace: bool) -> tuple[str, dict[str, Any] | None, int]:
+    frame = {
+        "context": {
+            "messages": [{
+                "role": "user",
+                "content": prompt,
+                "timestamp": int(time.time() * 1000),
+            }],
+        },
+        "options": {"maxTokens": max_tokens},
+    }
+    payload = json.dumps(frame, ensure_ascii=False, separators=(",", ":"))
+    request_document = {"model": model, "payload": payload}
+    request = json.dumps(request_document, ensure_ascii=False, separators=(",", ":")).encode()
+    body = b"\x00" + struct.pack(">I", len(request)) + request
+    digest = hashlib.sha256(request).hexdigest()[:16]
+    if show_trace:
+        trace(f"request model={model} prompt={prompt!r} max_tokens={max_tokens}")
+        trace(f"wire request bytes={len(request)} sha256={digest} inference_format=pi-ai@0.81.1")
+
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=300)
+    started = time.monotonic()
+    try:
+        connection.request(
+            "POST",
+            f"{PROVIDER_PATH}/Infer",
+            body=body,
+            headers={
+                "Content-Type": "application/connect+json",
+                "Connect-Protocol-Version": "1",
+                "Accept-Encoding": "identity",
+            },
+        )
+        response = connection.getresponse()
+        if show_trace:
+            trace(f"HTTP {response.status} {response.reason}; content-type={response.getheader('Content-Type')}")
+        if response.status != 200:
+            raise ShotError(f"Infer failed: HTTP {response.status}: {response.read().decode(errors='replace')}")
+
+        text: list[str] = []
+        final: dict[str, Any] | None = None
+        envelopes = 0
+        while True:
+            header = response.read(5)
+            if not header:
+                break
+            if len(header) != 5:
+                header += read_exact(response, 5 - len(header))
+            flags = header[0]
+            size = struct.unpack(">I", header[1:])[0]
+            data = read_exact(response, size)
+            envelopes += 1
+            elapsed = (time.monotonic() - started) * 1000
+            try:
+                document = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise ShotError(f"invalid JSON in envelope {envelopes}: {exc}") from exc
+            if flags & 0x02:
+                if show_trace:
+                    trace(f"+{elapsed:8.1f}ms envelope#{envelopes} trailer bytes={size} {compact(document)}")
+                error = document.get("error")
+                if error:
+                    raise ShotError(f"Connect trailer error: {compact(error)}")
+                continue
+            if flags & 0x01:
+                raise ShotError("compressed Connect envelopes are not supported")
+            try:
+                event = json.loads(document["payload"])
+            except (KeyError, TypeError, json.JSONDecodeError) as exc:
+                raise ShotError(f"invalid Infer response envelope: {compact(document)}") from exc
+            kind = event.get("type", "unknown")
+            if show_trace:
+                detail = event.get("delta") if kind.endswith("_delta") else event
+                trace(f"+{elapsed:8.1f}ms envelope#{envelopes} event={kind} bytes={size} {compact(detail)}")
+            if kind == "text_delta":
+                text.append(str(event.get("delta", "")))
+            if kind in {"done", "error"}:
+                final = event
+    finally:
+        connection.close()
+
+    elapsed_ms = round((time.monotonic() - started) * 1000)
+    if show_trace:
+        trace(f"stream complete envelopes={envelopes} elapsed_ms={elapsed_ms}")
+    return "".join(text), final, elapsed_ms
+
+
+def logs_since(components: Iterable[Component], since: str) -> None:
+    for component in components:
+        result = run("docker", "logs", "--since", since, component.container, check=False)
+        output = (result.stdout + result.stderr).strip()
+        trace(f"component log {component.name}: {output if output else '(no log lines emitted)'}")
+
+
+def print_topology(components: list[Component], outer: Component) -> None:
+    trace(f"system={outer.system} outer={outer.name} endpoint=127.0.0.1:{outer.host_port}")
+    for component in components:
+        marker = " [outer]" if component == outer else ""
+        links = ", ".join(component.links) if component.links else "none"
+        trace(f"component={component.name}{marker} state={component.state} health={component.health} links={links}")
+
+
+def find_model(catalogue: dict[str, Any], identifier: str) -> dict[str, Any]:
+    models = catalogue.get("models")
+    if not isinstance(models, list):
+        raise ShotError("Provider returned an invalid model catalogue")
+    match = next((item for item in models if isinstance(item, dict) and item.get("id") == identifier), None)
+    if match is None:
+        available = ", ".join(sorted(str(item.get("id")) for item in models if isinstance(item, dict)))
+        raise ShotError(f"model {identifier!r} is unavailable; available models: {available}")
+    return match
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(
+        prog="cyclo-shot",
+        description="Send one prompt through any Cyclo Provider model and trace the full local route.",
+    )
+    result.add_argument("model", nargs="?", help="catalogue model ID, for example pool/balanced")
+    result.add_argument("prompt", nargs="*", help="one-shot user prompt")
+    result.add_argument("--max-tokens", type=int, default=256, help="maximum output tokens (default: 256)")
+    result.add_argument("--system", help="DComp system label when more than one Cyclo installation exists")
+    result.add_argument("--list", action="store_true", help="list available model IDs and exit")
+    result.add_argument("--no-trace", action="store_true", help="print only the answer")
+    result.add_argument("--json", action="store_true", help="emit a machine-readable result on stdout")
+    return result
+
+
+def main() -> int:
+    args = parser().parse_args()
+    if args.max_tokens <= 0:
+        raise ShotError("--max-tokens must be positive")
+    components = docker_components(args.system)
+    outer = select_outer(components)
+    catalogue = unary(outer.host_port or 0, "ListModels")
+    if args.list:
+        for item in sorted(catalogue.get("models", []), key=lambda value: value.get("id", "")):
+            print(item.get("id", ""))
+        return 0
+    if not args.model or not args.prompt:
+        parser().error("MODEL and PROMPT are required unless --list is used")
+    prompt = " ".join(args.prompt)
+    model_info = find_model(catalogue, args.model)
+    show_trace = not args.no_trace and not args.json
+    if show_trace:
+        print_topology(components, outer)
+        trace(f"catalogue model={compact(model_info)}")
+    since = dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    answer, final, elapsed_ms = stream_infer(
+        outer.host_port or 0,
+        args.model,
+        prompt,
+        args.max_tokens,
+        show_trace,
+    )
+    if show_trace:
+        logs_since(components, since)
+        if final:
+            message = final.get("message") or final.get("error") or {}
+            trace(
+                "final route "
+                f"provider={message.get('provider', '?')} native_model={message.get('model', '?')} "
+                f"stop_reason={message.get('stopReason', final.get('reason', '?'))} "
+                f"usage={compact(message.get('usage', {}))}"
+            )
+    result = {
+        "requested_model": args.model,
+        "answer": answer,
+        "elapsed_ms": elapsed_ms,
+        "final_event": final,
+        "system": outer.system,
+        "outer_component": outer.name,
+    }
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(answer)
+    if final and final.get("type") == "error":
+        error = final.get("error", {}).get("errorMessage", "provider returned an error event")
+        if not args.json:
+            print(f"cyclo-shot: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (ShotError, OSError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        print(f"cyclo-shot: {exc}", file=sys.stderr)
+        raise SystemExit(1)

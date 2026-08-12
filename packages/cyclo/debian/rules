@@ -26,6 +26,7 @@ override_dh_auto_install:
 		debian/build/dist/cyclo_agent-*.whl
 	mkdir -p debian/cyclo/usr/bin debian/cyclo/usr/lib/python3/dist-packages
 	mv debian/cyclo/usr/local/bin/cyclo debian/cyclo/usr/bin/cyclo
+	install -m 0755 debian/cyclo-shot debian/cyclo/usr/bin/cyclo-shot
 	site_packages=$$(find debian/cyclo/usr/local/lib -type d -name dist-packages -print -quit); test -n "$$site_packages"; cp -a "$$site_packages"/. debian/cyclo/usr/lib/python3/dist-packages/
 	install -d -m 0777 debian/cyclo/var/lib/cyclo
 	rm -rf debian/cyclo/usr/local

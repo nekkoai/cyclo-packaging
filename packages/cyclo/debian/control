@@ -25,7 +25,7 @@ Description: Git-defined agent teams through an isolated credential proxy
  builds the team and credential-gateway images locally, while DComp owns their
  Docker lifecycle and durable component topology.
  .
- This package installs only the host command and its immutable resources. It
- neither starts containers nor creates system users during installation. It
+ This package installs the host command, a one-shot Provider diagnostic, and
+ immutable resources. It neither starts containers nor creates system users. It
  creates /var/lib/cyclo as the default shared host realm; Docker access is
  required at runtime.

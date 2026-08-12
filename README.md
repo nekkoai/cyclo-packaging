@@ -10,7 +10,7 @@ repositories.
 | Package | Upstream | Purpose |
 | --- | --- | --- |
 | `dcomp` | DComp | Docker component lifecycle command required by Cyclo |
-| `cyclo` | Cyclo | Host CLI, immutable runtime resources, and system host.conf conffile |
+| `cyclo` | Cyclo | Host CLI, `cyclo-shot` Provider diagnostic, immutable runtime resources, and system host.conf conffile |
 | `cyclo-provider-pooler` | Provider Pooler | Docker build context for the optional quota-aware Provider component |
 
 The source lock records each upstream URL, branch, immutable commit, and Debian
@@ -107,7 +107,8 @@ make build
 ## Package boundaries
 
 - `dcomp` installs `/usr/bin/dcomp` and `/usr/bin/dcomp-healthcheck`.
-- `cyclo` owns `/etc/cyclo/host.conf` and packages upstream's default shared
+- `cyclo` owns `/etc/cyclo/host.conf`, installs the `cyclo-shot` one-shot
+  Provider diagnostic in `/usr/bin`, and packages upstream's default shared
   state root at `/var/lib/cyclo`. The root is temporarily world-readable and
   writable; credentials remain in a Docker volume.
 - `cyclo-provider-pooler` installs its complete Docker context at

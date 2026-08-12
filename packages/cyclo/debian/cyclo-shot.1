@@ -1,0 +1,49 @@
+.TH CYCLO-SHOT 1 "August 2026" "Cyclo 0.2.5" "User Commands"
+.SH NAME
+cyclo-shot \- send a one-shot inference request through a Cyclo Provider
+.SH SYNOPSIS
+.B cyclo-shot
+.RI [ options ]
+.I model prompt...
+.br
+.B cyclo-shot
+.RI [ options ]
+.B --list
+.SH DESCRIPTION
+.B cyclo-shot
+is a dependency-free operator diagnostic for the outer Provider exposed by a
+running Cyclo DComp system. It discovers the loopback-published Provider,
+validates the requested model against its catalogue, sends one streaming
+inference request, and prints the answer on standard output.
+.PP
+Unless tracing is disabled, topology, request envelopes, routing metadata,
+usage, and component logs emitted during the request are written to standard
+error.
+.SH OPTIONS
+.TP
+.B --list
+List available model identifiers and exit.
+.TP
+.BI --max-tokens\  count
+Set the maximum number of output tokens. The default is 256.
+.TP
+.BI --system\  name
+Select a DComp system when more than one Cyclo installation exists.
+.TP
+.B --no-trace
+Print only the model answer.
+.TP
+.B --json
+Write a machine-readable result to standard output and suppress the trace.
+.SH EXAMPLES
+.nf
+cyclo-shot --list
+cyclo-shot pool/balanced "reply with exactly: hello"
+cyclo-shot --no-trace pool/balanced "tell me a joke"
+.fi
+.SH EXIT STATUS
+Returns 0 on success, 2 when the Provider emits a terminal error event, and 1
+for discovery, transport, protocol, or local execution failures.
+.SH SEE ALSO
+.BR cyclo (1),
+.BR docker (1)

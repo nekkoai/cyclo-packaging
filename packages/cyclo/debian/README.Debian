@@ -1,8 +1,9 @@
 Cyclo for Ubuntu and Debian
 ---------------------------
 
-Cyclo is a host CLI. Installing this package does not start a daemon, create a
-service account, add users to the docker group, or create Docker containers,
+Cyclo is a host CLI, and the package includes the companion `cyclo-shot`
+diagnostic. Installing it does not start a daemon, create a service account,
+add users to the docker group, or create Docker containers,
 networks, or volumes.
 
 Runtime prerequisites
@@ -34,3 +35,15 @@ Provider credentials remain in Cyclo's Docker volume, not in `/var/lib/cyclo`.
 A shared deployment needs filesystem access through the complete state tree;
 for a secure multi-user installation, replace the temporary world-writable
 policy with a trusted Unix group and suitable ACLs or a group-aware umask.
+
+Provider smoke tests
+--------------------
+
+The package also installs `cyclo-shot`, a dependency-free operator diagnostic
+for sending one prompt through the loopback-published outer Provider. Run
+`cyclo-shot --list` to inspect available model IDs, then for example:
+
+    cyclo-shot pool/balanced "reply with exactly: hello"
+
+It writes topology, routing, usage, and request-time component logs to stderr;
+use `--no-trace` for answer-only output or `--json` for machine-readable output.

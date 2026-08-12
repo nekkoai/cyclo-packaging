@@ -5,8 +5,8 @@
       "repository": "https://github.com/nekkoai/cyclo.git",
       "ref": "v0.2.5",
       "commit": "bc74b10f5b126036311a75f88681cde985b22a1b",
-      "debian_revision": 1,
-      "package_version": "0.2.5-1"
+      "debian_revision": 2,
+      "package_version": "0.2.5-2"
     },
     "dcomp": {
       "repository": "https://github.com/glguida/dcomp.git",

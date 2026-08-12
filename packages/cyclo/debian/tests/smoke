@@ -7,6 +7,9 @@ test -d /var/lib/cyclo
 test "$(stat -c %a /var/lib/cyclo)" = 777
 test -f /usr/share/doc/cyclo/README.Debian.gz
 test -x /usr/bin/cyclo
+test -x /usr/bin/cyclo-shot
+cyclo-shot --help >/dev/null
+python3 -c 'compile(open("/usr/bin/cyclo-shot", encoding="utf-8").read(), "/usr/bin/cyclo-shot", "exec")'
 test ! -e /usr/lib/cyclo
 
 work_root=$(mktemp -d)
